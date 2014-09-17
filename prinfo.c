@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
 	long ret;
 	struct prinfo* inf = NULL;
 	int y;
-	ret = syscall (378, inf, &y);
+	ret = syscall (__NR_ptree, inf, &y);
 	printf ("ret = %d\n", (int)ret);
 	return 0;
 }
