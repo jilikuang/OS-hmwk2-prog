@@ -49,6 +49,8 @@
 #include <linux/user_namespace.h>
 
 #include <linux/kmsg_dump.h>
+#include <linux/prinfo.h>  /* @lfred */
+
 /* Move somewhere else to avoid recompiling? */
 #include <generated/utsrelease.h>
 
@@ -1104,6 +1106,13 @@ SYSCALL_DEFINE0(getpgrp)
 }
 
 #endif
+
+/* @lfred */
+SYSCALL_DEFINE2(ptree, 
+		struct prinfo*, buf,
+		int*, nr) {
+	return THREAD_SIZE;
+}
 
 SYSCALL_DEFINE1(getsid, pid_t, pid)
 {

@@ -1,8 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/syscall.h>
-#include <sys/types.h>
+#ifndef __PRINFO_H__
+#define __PRINFO_H__
+
+#include <linux/types.h>
 
 struct prinfo {
 	pid_t parent_pid;		/* process id of parent */
@@ -14,14 +13,4 @@ struct prinfo {
 	char comm[64];			/* name of program executed */
 };
 
-#define __NR_ptree 378
-
-int main(int argc, char **argv) {
-
-	long ret;
-	struct prinfo* inf = NULL;
-	int y;
-	ret = syscall (378, inf, &y);
-	printf ("ret = %d\n", (int)ret);
-	return 0;
-}
+#endif
