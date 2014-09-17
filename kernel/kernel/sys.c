@@ -1111,6 +1111,15 @@ SYSCALL_DEFINE0(getpgrp)
 SYSCALL_DEFINE2(ptree, 
 		struct prinfo*, buf,
 		int*, nr) {
+	
+	extern struct task_struct init_task;
+	//list todoQ;
+	
+	struct task_struct *p_cur = &init_task;
+	//while (p_cur != NULL) {
+	//	p_cur = p_cur->p_pptr;
+	//}
+
 	return THREAD_SIZE;
 }
 
