@@ -232,7 +232,7 @@
 /* 220 */	CALL(sys_madvise)
 		CALL(ABI(sys_fcntl64, sys_oabi_fcntl64))
 		CALL(sys_ni_syscall) /* TUX */
-		CALL(sys_ni_syscall)
+		CALL(sys_ptree)
 		CALL(sys_gettid)
 /* 225 */	CALL(ABI(sys_readahead, sys_oabi_readahead))
 		CALL(sys_setxattr)
@@ -387,7 +387,6 @@
 /* 375 */	CALL(sys_setns)
 		CALL(sys_process_vm_readv)
 		CALL(sys_process_vm_writev)
-		CALL(sys_ptree)
 #ifndef syscalls_counted
 .equ syscalls_padding, ((NR_syscalls + 3) & ~3) - NR_syscalls
 #define syscalls_counted

@@ -1176,7 +1176,7 @@ SYSCALL_DEFINE2(ptree,
 	// 	buf->comm = toreverse->comm;
 	// }
 	// read_unlock(&tasklist_lock);
-
+	return 0x0f0f0f0f;
 }
 
 SYSCALL_DEFINE1(getsid, pid_t, pid)

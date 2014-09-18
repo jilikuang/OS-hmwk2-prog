@@ -14,7 +14,7 @@ struct prinfo {
 	char comm[64];			/* name of program executed */
 };
 
-#define __NR_ptree 378
+#define __NR_ptree 223
 
 int main(int argc, char **argv) {
 
@@ -22,6 +22,6 @@ int main(int argc, char **argv) {
 	struct prinfo* inf = NULL;
 	int y;
 	ret = syscall (__NR_ptree, inf, &y);
-	printf ("ret = %d\n", (int)ret);
+	printf ("ret = %x\n", (int)ret);
 	return 0;
 }

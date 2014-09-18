@@ -249,6 +249,7 @@
 #define __NR_fcntl64			(__NR_SYSCALL_BASE+221)
 					/* 222 for tux */
 					/* 223 is unused */
+#define __NR_ptree			(__NR_SYSCALL_BASE+223)
 #define __NR_gettid			(__NR_SYSCALL_BASE+224)
 #define __NR_readahead			(__NR_SYSCALL_BASE+225)
 #define __NR_setxattr			(__NR_SYSCALL_BASE+226)
@@ -404,7 +405,6 @@
 #define __NR_setns			(__NR_SYSCALL_BASE+375)
 #define __NR_process_vm_readv		(__NR_SYSCALL_BASE+376)
 #define __NR_process_vm_writev		(__NR_SYSCALL_BASE+377)
-#define __NR_ptree			(__NR_SYSCALL_BASE+378)
 
 /*
  * The following SWIs are ARM private.
