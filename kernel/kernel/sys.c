@@ -1117,11 +1117,13 @@ SYSCALL_DEFINE2(ptree,
 
 	/* Bo */
 	// Concept of DFS to traverse tree, and handle info
-	// Need to work on syntax, strcut of task_struct, mem allcation
+	// Need to work on syntax, strcut of task_struct, mem allocation
 
 	// list topop;
 	// list visited;
 	
+	// read_lock(&tasklist_lock);
+
 	// /* start from init_task */
 	// additem(init_task,topop);
 	// additem(init_task,visited);
@@ -1173,7 +1175,8 @@ SYSCALL_DEFINE2(ptree,
 	// 	buf->uid = toreverse->uid;
 	// 	buf->comm = toreverse->comm;
 	// }
-	
+	// read_unlock(&tasklist_lock);
+
 }
 
 SYSCALL_DEFINE1(getsid, pid_t, pid)
