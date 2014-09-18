@@ -1112,15 +1112,68 @@ SYSCALL_DEFINE2(ptree,
 		struct prinfo*, buf,
 		int*, nr) {
 	
-	extern struct task_struct init_task;
-	//list todoQ;
-	
+	extern struct task_struct init_task;	
 	struct task_struct *p_cur = &init_task;
-	//while (p_cur != NULL) {
-	//	p_cur = p_cur->p_pptr;
-	//}
 
-	return THREAD_SIZE;
+	/* Bo */
+	// Concept of DFS to traverse tree, and handle info
+	// Need to work on syntax, strcut of task_struct, mem allcation
+
+	// list topop;
+	// list visited;
+	
+	// /* start from init_task */
+	// additem(init_task,topop);
+	// additem(init_task,visited);
+
+	// list visited;
+
+	// while (topop != NULL) {
+	// 	/* if current process has not visited child */
+	// 	if(p_cur->child != NULL && notin(visited)){
+	// 		additem(p_cur->child, topop);
+	// 		additem(p_cur->child, visited);
+	// 		p_cur = p_cur->child;
+	// 	}
+	// 	/* if current process has no child */
+	// 	if(p_cur->child == NULL){
+	// 		additem( poplast(topop), toreverse);
+	// 		toreverse->first_child_pid = 0;
+	// 		toreverse->prev->next_sibling_pid = p_cur->pid;
+	// 		p_cur = p_cur->parent;
+	// 	}
+	// }
+
+	// /* save list in the correct order */
+	// while(toreverse != NULL){
+
+	// 	/* special treatment for init_task */
+	// 	if(toreverse->prev == NULL){
+	// 		buf mem allocation;
+	// 		poplast(toreverse);
+
+	// 		buf->parent_pid = 0;
+	// 		buf->pid = toreverse->pid;
+	// 		buf->first_child_pid = toreverse->first_child_pid;
+	// 		buf->next_sibling_pid = toreverse->next_sibling_pid;
+	// 		buf->state = toreverse->state;
+	// 		buf->uid = toreverse->uid;
+	// 		buf->comm = toreverse->comm;
+
+	// 		break;
+	// 	}
+
+	// 	buf mem allocation;
+	// 	poplast(toreverse);
+	// 	buf->parent_pid = toreverse->parent_pid;
+	// 	buf->pid = toreverse->pid;
+	// 	buf->first_child_pid = toreverse->first_child_pid;
+	// 	buf->next_sibling_pid = toreverse->next_sibling_pid;
+	// 	buf->state = toreverse->state;
+	// 	buf->uid = toreverse->uid;
+	// 	buf->comm = toreverse->comm;
+	// }
+	
 }
 
 SYSCALL_DEFINE1(getsid, pid_t, pid)
