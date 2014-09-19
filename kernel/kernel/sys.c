@@ -1172,7 +1172,7 @@ SYSCALL_DEFINE2(ptree,
 	LIST_HEAD(prinfo_list);
 	unsigned int prlist_nr = 0;
 	struct prlist_node *p_prinfo_node;
-#if 0
+#if 1
 	extern struct task_struct init_task;
 
 	read_lock(&tasklist_lock);
@@ -1209,66 +1209,84 @@ SYSCALL_DEFINE2(ptree,
 	test_traverse_prlist(&prinfo_list);
 
 	/* Bo */
-	// Concept of DFS to traverse tree, and handle info
-	// Need to work on syntax, strcut of task_struct, mem allocation
+#if 0
+	LIST_HEAD(to_pop_head);
+	LIST_HEAD(visited_head);
+	LIST_HEAD(output_head);
 
-	// list topop;
-	// list visited;
+	struct list_head *p_to_pop = &to_pop_head;
+	struct list_head *p_visited = &visited_head;
+	struct list_head *p_output = &output_head;
+
+
+	read_lock(&tasklist_lock);
+
+	struct pr_task_node *new_node = (struct pr_task_node *)vmalloc(sizeof(struct pr_task_node));
+	if (pr_task_node == NULL)
+		return -ENOMEM;
+	INIT_LIST_HEAD(&new_node->m_list);
+
+	new_node->mp_task = &init_task;
+
+	/* start from init_task */
+	list_add(p_to_pop, &new_node.m_list);
+	list_add(p_visited, &new_node.m_list);
+	list_add(p_output, &new_node.m_list);
+
+	while (!list_empty(p_to_pop)) {
+
+		struct list_head *p_children = &(p_cur->children);
+
+		/* if current process has unvisited child */
+		if (!list_empty(p_children) && !is_visited(p_children, p_visited){
+			p_cur = find_unvisited(p_children, p_visited);
+			list_add_tail (&p_cur, to_pop_head);
+			list_add_tail (&p_cur, visited_head);
+		}
+
+		/* if current process has no child */
+		if (list_empty (p_children) {
+			list_del(p_cur)
+			list_add_tail (&topop->head, &output.list);	//need to change topop->head to 
+			toreverse->first_child_pid = 0;
+			toreverse->prev->next_sibling_pid = p_cur->pid;
+			p_cur = p_cur->parent;
+		}
+	}
+
+	/* save list in the correct order */
+	while(toreverse != NULL){
+
+		/* special treatment for init_task */
+		if(toreverse->prev == NULL){
+			buf mem allocation;
+			poplast(toreverse);
+
+			buf->parent_pid = 0;
+			buf->pid = toreverse->pid;
+			buf->first_child_pid = toreverse->first_child_pid;
+			buf->next_sibling_pid = toreverse->next_sibling_pid;
+			buf->state = toreverse->state;
+			buf->uid = toreverse->uid;
+			buf->comm = toreverse->comm;
+
+			break;
+		}
+
+		buf mem allocation;
+		poplast(toreverse);
+		buf->parent_pid = toreverse->parent_pid;
+		buf->pid = toreverse->pid;
+		buf->first_child_pid = toreverse->first_child_pid;
+		buf->next_sibling_pid = toreverse->next_sibling_pid;
+		buf->state = toreverse->state;
+		buf->uid = toreverse->uid;
+		buf->comm = toreverse->comm;
+	}
+	read_unlock(&tasklist_lock);
+#endif
 	
-	// read_lock(&tasklist_lock);
-
-	// /* start from init_task */
-	// additem(init_task,topop);
-	// additem(init_task,visited);
-
-	// list visited;
-
-	// while (topop != NULL) {
-	// 	/* if current process has not visited child */
-	// 	if(p_cur->child != NULL && notin(visited)){
-	// 		additem(p_cur->child, topop);
-	// 		additem(p_cur->child, visited);
-	// 		p_cur = p_cur->child;
-	// 	}
-	// 	/* if current process has no child */
-	// 	if(p_cur->child == NULL){
-	// 		additem( poplast(topop), toreverse);
-	// 		toreverse->first_child_pid = 0;
-	// 		toreverse->prev->next_sibling_pid = p_cur->pid;
-	// 		p_cur = p_cur->parent;
-	// 	}
-	// }
-
-	// /* save list in the correct order */
-	// while(toreverse != NULL){
-
-	// 	/* special treatment for init_task */
-	// 	if(toreverse->prev == NULL){
-	// 		buf mem allocation;
-	// 		poplast(toreverse);
-
-	// 		buf->parent_pid = 0;
-	// 		buf->pid = toreverse->pid;
-	// 		buf->first_child_pid = toreverse->first_child_pid;
-	// 		buf->next_sibling_pid = toreverse->next_sibling_pid;
-	// 		buf->state = toreverse->state;
-	// 		buf->uid = toreverse->uid;
-	// 		buf->comm = toreverse->comm;
-
-	// 		break;
-	// 	}
-
-	// 	buf mem allocation;
-	// 	poplast(toreverse);
-	// 	buf->parent_pid = toreverse->parent_pid;
-	// 	buf->pid = toreverse->pid;
-	// 	buf->first_child_pid = toreverse->first_child_pid;
-	// 	buf->next_sibling_pid = toreverse->next_sibling_pid;
-	// 	buf->state = toreverse->state;
-	// 	buf->uid = toreverse->uid;
-	// 	buf->comm = toreverse->comm;
-	// }
-	// read_unlock(&tasklist_lock);
+	// return buf;
 	return 0x0f0f0f0f;
 }
 
