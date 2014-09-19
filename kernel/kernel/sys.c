@@ -1110,10 +1110,22 @@ SYSCALL_DEFINE0(getpgrp)
 /* @lfred */
 SYSCALL_DEFINE2(ptree, 
 		struct prinfo*, buf,
-		int*, nr) {
-	
-	extern struct task_struct init_task;	
-	struct task_struct *p_cur = &init_task;
+		int*, nr)
+{
+	struct task_struct *p_cur = NULL;
+#if 0
+	extern struct task_struct init_task;
+
+	p_cur = &init_task;
+#else	/* Jili: Test if init can be reach by searching current's parents */
+
+	p_cur = current->parent;
+	while ((p_cur != NULL) && (p_cur != p_cur->parent)) {
+		p_cur = current->parent;
+	}
+
+	printk("Reached pid: %d\n", p_cur->pid);
+#endif
 
 	/* Bo */
 	// Concept of DFS to traverse tree, and handle info
