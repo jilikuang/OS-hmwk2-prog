@@ -1107,13 +1107,6 @@ SYSCALL_DEFINE0(getpgrp)
 
 #endif
 
-/* Jili */
-/* Define prinfo info list to restore DFS-traversed processes */
-struct prlist_node {
-	struct prinfo info;
-	struct list_head list;
-};
-
 /* Test function to print the prinfo */
 static inline void test_print_prinfo(struct prinfo *info)
 {

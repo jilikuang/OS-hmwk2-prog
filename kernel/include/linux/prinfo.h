@@ -13,4 +13,12 @@ struct prinfo {
 	char comm[64];			/* name of program executed */
 };
 
+/* Jili */
+/* Define prinfo info list to restore DFS-traversed processes */
+struct prlist_node {
+	struct prinfo info;
+	struct list_head list;
+};
+
+/* Test function to print the prinfo */
 #endif
