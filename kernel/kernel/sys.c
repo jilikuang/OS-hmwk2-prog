@@ -1107,25 +1107,113 @@ SYSCALL_DEFINE0(getpgrp)
 
 #endif
 
+/* Jili */
+/* Define prinfo info list to restore DFS-traversed processes */
+struct prlist_node {
+	struct prinfo info;
+	struct list_head list;
+};
+
+/* Test function to print the prinfo */
+static inline void test_print_prinfo(struct prinfo *info)
+{
+	printk("(%d, %d, %d, %d, %ld, %ld, %s)\n",
+			info->parent_pid, info->pid,
+			info->first_child_pid,
+			info->next_sibling_pid,
+			info->state, info->uid,
+			info->comm);
+}
+
+/* Test function to show all prinfo in the list */
+static int test_traverse_prlist(struct list_head *head)
+{
+	int retral = 0;
+	struct list_head *p_list = NULL;
+	struct prlist_node *p_node = NULL;
+
+	list_for_each(p_list, head) {
+		p_node = list_entry(p_list, struct prlist_node, list);
+		printk("%s", __func__);
+		test_print_prinfo(&p_node->info);
+	}
+
+	return retral;
+}
+
+/* Fill in prinfo with given task struct */
+static int fill_in_prinfo(struct prinfo *info, struct task_struct *p)
+{
+	int retval = 0;
+
+	info->parent_pid = p->parent->pid;
+	info->pid = p->pid;
+	info->first_child_pid = list_first_entry(
+			&p->children,
+			struct task_struct,
+			children)->pid;/* Jili: Data to confirm */
+	info->next_sibling_pid = list_first_entry(
+			&p->sibling,
+			struct task_struct,
+			sibling)->pid;/* Jili: Data to confirm */
+	info->state = p->state;
+	info->uid = p->loginuid;
+	strcpy(info->comm, p->comm);
+
+#if 1
+	printk("%s", __func__);
+	test_print_prinfo(info);
+#endif
+
+	return retval;
+}
+
+#include <linux/vmalloc.h>
+
 /* @lfred */
 SYSCALL_DEFINE2(ptree, 
 		struct prinfo*, buf,
 		int*, nr)
 {
 	struct task_struct *p_cur = NULL;
+	LIST_HEAD(prinfo_list);
+	unsigned int prlist_nr = 0;
+	struct prlist_node *p_prinfo_node;
 #if 0
 	extern struct task_struct init_task;
 
+	read_lock(&tasklist_lock);
 	p_cur = &init_task;
-#else	/* Jili: Test if init can be reach by searching current's parents */
-
+#else
+	/* Jili: Test if init can be reach by searching current's parents */
+	read_lock(&tasklist_lock);
 	p_cur = current->parent;
 	while ((p_cur != NULL) && (p_cur != p_cur->parent)) {
-		p_cur = current->parent;
+		printk("0x%X\n", (unsigned int)p_cur);
+		p_cur = p_cur->parent;
 	}
 
 	printk("Reached pid: %d\n", p_cur->pid);
 #endif
+	if (p_cur == NULL) {
+		printk("Cannot find the init process\n");
+		return -EPERM;
+	}
+
+	/* Add init to the list */
+	p_prinfo_node =
+		(struct prlist_node *)vmalloc(sizeof(struct prlist_node));
+	if (p_prinfo_node == NULL)
+		return -ENOMEM;
+
+	fill_in_prinfo(&p_prinfo_node->info, p_cur);
+	list_add_tail(&p_prinfo_node->list, &prinfo_list);
+	prlist_nr++;
+
+	read_unlock(&tasklist_lock);
+
+	/* Jili: Temp test */
+	test_traverse_prlist(&prinfo_list);
 
 	/* Bo */
 	// Concept of DFS to traverse tree, and handle info
