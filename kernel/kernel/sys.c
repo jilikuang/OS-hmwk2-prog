@@ -1224,41 +1224,53 @@ SYSCALL_DEFINE2(ptree,
 	struct pr_task_node *new_node = (struct pr_task_node *)vmalloc(sizeof(struct pr_task_node));
 	if (pr_task_node == NULL)
 		return -ENOMEM;
-	INIT_LIST_HEAD(&new_node->m_list);
 
-	new_node->mp_task = &init_task;
+	INIT_LIST_HEAD(& new_node->m_visited);
+	INIT_LIST_HEAD(& new_node->m_to_top);
+	INIT_LIST_HEAD(& new_node->m_output);
 
+	list_add(p_to_pop, & new_node->m_visited);
+	list_add(p_visited, & new_node->m_to_top);
+	list_add(p_output, & new_node.m->output);
+	
 	/* start from init_task */
-	list_add(p_to_pop, &new_node.m_list);
-	list_add(p_visited, &new_node.m_list);
-	list_add(p_output, &new_node.m_list);
+	new_node->mp_task = &init_task;
 
 	while (!list_empty(p_to_pop)) {
 
 		struct list_head *p_children = &(p_cur->children);
 
 		/* if current process has unvisited child */
-		if (!list_empty(p_children) && !is_visited(p_children, p_visited){
-			p_cur = find_unvisited(p_children, p_visited);
-			list_add_tail (&p_cur, to_pop_head);
-			list_add_tail (&p_cur, visited_head);
+		if (!list_empty(p_children) && !is_visited(p_children, p_visited)){
+			new_node = (struct pr_task_node *)vmalloc(sizeof(struct pr_task_node));
+			if (pr_task_node == NULL)
+				return -ENOMEM;
+			INIT_LIST_HEAD(& new_node->m_visited);
+			INIT_LIST_HEAD(& new_node->m_to_top);
+			INIT_LIST_HEAD(& new_node->m_output);
+			new_node->mp_task = find_unvisited(p_children, p_visited);
+			p_cur = new_node->mp_task;
+
+			list_add_tail (& new_node->m_visited, p_to_pop);
+			list_add_tail (& new_node->m_to_top, p_visited);
 		}
 
 		/* if current process has no child */
 		if (list_empty (p_children) {
-			list_del(p_cur)
-			list_add_tail (&topop->head, &output.list);	//need to change topop->head to 
-			toreverse->first_child_pid = 0;
-			toreverse->prev->next_sibling_pid = p_cur->pid;
+			struct list_head p_output_node_first = list_entry(p_to_pop->prev, struct list_head, m_output);
+			list_add(p_output_node_first, p_output);
+			list_del (p_to_pop->prev);
 			p_cur = p_cur->parent;
 		}
 	}
+	
+	int first = 0;
 
 	/* save list in the correct order */
-	while(toreverse != NULL){
+	while(!list_empty(p_output)){
 
-		/* special treatment for init_task */
-		if(toreverse->prev == NULL){
+		/* special treatment for init_task, parent id = 0*/
+		if(first == 0){
 			buf mem allocation;
 			poplast(toreverse);
 
@@ -1269,8 +1281,7 @@ SYSCALL_DEFINE2(ptree,
 			buf->state = toreverse->state;
 			buf->uid = toreverse->uid;
 			buf->comm = toreverse->comm;
-
-			break;
+			first = 1;
 		}
 
 		buf mem allocation;
@@ -1285,7 +1296,7 @@ SYSCALL_DEFINE2(ptree,
 	}
 	read_unlock(&tasklist_lock);
 #endif
-	
+
 	// return buf;
 	return 0x0f0f0f0f;
 }
