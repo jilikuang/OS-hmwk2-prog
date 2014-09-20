@@ -50,6 +50,7 @@
 
 #include <linux/kmsg_dump.h>
 #include <linux/prinfo.h>  /* @lfred */
+#include <linux/vmalloc.h> /* @lfred */
 
 /* Move somewhere else to avoid recompiling? */
 #include <generated/utsrelease.h>
@@ -1161,7 +1162,44 @@ static int fill_in_prinfo(struct prinfo *info, struct task_struct *p)
 	return retval;
 }
 
-#include <linux/vmalloc.h>
+/* @lfred: the function is used to retrieve the root node */
+static struct task_struct* find_root_proc () {
+
+	extern struct task_struct init_task;
+	return &init_task;
+}
+
+/* @lfred: the function is used to check if the node is traversed. */
+static int is_node_visited (
+	struct task_struct *p_task, 
+	struct list_head *p_list) {
+	
+	struct pr_task_node *pos;
+
+	list_for_each_entry (pos, p_list, m_visited) {
+		if (pos->mp_task == p_task)
+			return 1;
+	}	
+
+	return -1;
+}
+
+static struct task_struct* find_unvisited_child (
+	struct list_head *p_children, 
+	struct list_head *p_visited) {
+
+	struct task_struct *child;
+	struct pr_task_node *vst;
+
+	list_for_each_entry (child, p_children, children) {
+		list_for_each_entry (vst, p_visited, m_visited) {
+			if (child == vst->mp_task)
+				return child;
+		}
+	}
+
+	return NULL;
+}
 
 /* @lfred */
 SYSCALL_DEFINE2(ptree, 
@@ -1169,101 +1207,126 @@ SYSCALL_DEFINE2(ptree,
 		int*, nr)
 {
 	struct task_struct *p_cur = NULL;
-	LIST_HEAD(prinfo_list);
-	unsigned int prlist_nr = 0;
-	struct prlist_node *p_prinfo_node;
-#if 1
-	extern struct task_struct init_task;
+	struct task_struct *p_unvisted_child = NULL;
 
-	read_lock(&tasklist_lock);
-	p_cur = &init_task;
-#else
-	/* Jili: Test if init can be reach by searching current's parents */
-	read_lock(&tasklist_lock);
-	p_cur = current->parent;
-	while ((p_cur != NULL) && (p_cur != p_cur->parent)) {
-		printk("0x%X\n", (unsigned int)p_cur);
-		p_cur = p_cur->parent;
-	}
+	/* step 1: find the root of the task tree */
+	p_cur = find_root_proc();
 
-	printk("Reached pid: %d\n", p_cur->pid);
-#endif
-	if (p_cur == NULL) {
-		printk("Cannot find the init process\n");
-		return -EPERM;
-	}
+	/* initialize 3 queues used in the DFS algo */
+	LIST_HEAD(to_pop_head);		/* a temp storage */
+	LIST_HEAD(visited_head);	/* to remember where we've been */
+	LIST_HEAD(output_head);         /* output queue */
 
-	/* Add init to the list */
-	p_prinfo_node =
-		(struct prlist_node *)vmalloc(sizeof(struct prlist_node));
-	if (p_prinfo_node == NULL)
-		return -ENOMEM;
-
-	fill_in_prinfo(&p_prinfo_node->info, p_cur);
-	list_add_tail(&p_prinfo_node->list, &prinfo_list);
-	prlist_nr++;
-
-	read_unlock(&tasklist_lock);
-
-	/* Jili: Temp test */
-	test_traverse_prlist(&prinfo_list);
-
-	/* Bo */
-#if 0
-	LIST_HEAD(to_pop_head);
-	LIST_HEAD(visited_head);
-	LIST_HEAD(output_head);
-
-	struct list_head *p_to_pop = &to_pop_head;
+	/* Fast access to the Q head */
+	struct list_head *p_to_pop  = &to_pop_head;
 	struct list_head *p_visited = &visited_head;
-	struct list_head *p_output = &output_head;
+	struct list_head *p_output  = &output_head;
 
-
+	/* lock the list access --> be sure to release */
 	read_lock(&tasklist_lock);
 
-	struct pr_task_node *new_node = (struct pr_task_node *)vmalloc(sizeof(struct pr_task_node));
-	if (pr_task_node == NULL)
+	struct pr_task_node *new_node = 
+		(struct pr_task_node *)vmalloc(sizeof(struct pr_task_node));
+	
+	if (new_node == NULL) {
+		read_unlock(&tasklist_lock);
 		return -ENOMEM;
+	}
 
 	INIT_LIST_HEAD(& new_node->m_visited);
-	INIT_LIST_HEAD(& new_node->m_to_top);
+	INIT_LIST_HEAD(& new_node->m_to_pop);
 	INIT_LIST_HEAD(& new_node->m_output);
 
+	/* add init task to visited, to_pop list, and output list */
+	new_node->mp_task = p_cur;
 	list_add(p_to_pop, & new_node->m_visited);
-	list_add(p_visited, & new_node->m_to_top);
-	list_add(p_output, & new_node.m->output);
+	list_add(p_visited, & new_node->m_to_pop);
+	list_add(p_output, & new_node->m_output);
 	
-	/* start from init_task */
-	new_node->mp_task = &init_task;
+	while (!list_empty (p_to_pop)) {
 
-	while (!list_empty(p_to_pop)) {
-
+		/* a pointer to the child 'list_head' */
 		struct list_head *p_children = &(p_cur->children);
 
-		/* if current process has unvisited child */
-		if (!list_empty(p_children) && !is_visited(p_children, p_visited)){
-			new_node = (struct pr_task_node *)vmalloc(sizeof(struct pr_task_node));
-			if (pr_task_node == NULL)
-				return -ENOMEM;
-			INIT_LIST_HEAD(& new_node->m_visited);
-			INIT_LIST_HEAD(& new_node->m_to_top);
-			INIT_LIST_HEAD(& new_node->m_output);
-			new_node->mp_task = find_unvisited(p_children, p_visited);
-			p_cur = new_node->mp_task;
+		/* if it's a leaf (no children), 	*/
+		/* 	1. add to outputi		*/
+		/*	2. set p_pur to parent 		*/
+		if (list_empty(p_children)) {
+		
+			printk ("[TREE] output: case 1 - %d", p_cur->pid);
+	
+			/* get the tail of the output to_pop queue */
+			struct pr_task_node *queue_tail = 
+				list_entry (
+					p_to_pop->prev, 
+					struct pr_task_node, 
+					m_to_pop);
 
-			list_add_tail (& new_node->m_visited, p_to_pop);
-			list_add_tail (& new_node->m_to_top, p_visited);
+			list_add_tail (&(queue_tail->m_output), p_output);	/* add to output queue */
+			list_del (&(queue_tail->m_to_pop));	/* del from to-pop */
+	
+			if (list_empty (p_to_pop)) {
+				printk ("[TREE] WTF !!!");
+				break;
+			} else {	
+				/* next should be the top of the to-pop stack */	
+		        	p_cur =	list_entry (
+						p_to_pop->prev, 
+						struct pr_task_node, 
+						m_to_pop)->mp_task;
+			}
+
 		}
 
-		/* if current process has no child */
-		if (list_empty (p_children) {
-			struct list_head p_output_node_first = list_entry(p_to_pop->prev, struct list_head, m_output);
-			list_add(p_output_node_first, p_output);
-			list_del (p_to_pop->prev);
-			p_cur = p_cur->parent;
+		/* if current process has unvisited child */
+		else if ((p_unvisted_child = find_unvisited_child (p_children, p_visited)) != NULL) {
+		
+			printk ("[TREE] output: case 2 - %d", p_cur->pid);
+			new_node = (struct pr_task_node *)vmalloc(sizeof(struct pr_task_node));
+			
+			if (new_node == NULL) {
+				printk ("[TREE] memory allocation failure");
+				read_unlock (&tasklist_lock);
+				return -ENOMEM;
+			}
+			
+			p_cur = new_node->mp_task = p_unvisted_child;
+			INIT_LIST_HEAD(&new_node->m_visited);
+			INIT_LIST_HEAD(&new_node->m_to_pop);
+			INIT_LIST_HEAD(&new_node->m_output);
+			
+			/* added to the visited and pop list */
+			list_add_tail(&new_node->m_visited, p_visited);
+			list_add_tail(&new_node->m_to_pop, p_to_pop);
+			list_add_tail(&new_node->m_output, p_output);	/* add to output queue */
+		} 
+		/* No more children to work-on */
+		else {
+			printk ("[TREE] The node has no unvisited children");
+			
+			/* get the tail of the output to_pop queue */
+			struct pr_task_node *stack_top = 
+				list_entry (
+					p_to_pop->prev, 
+					struct pr_task_node, 
+					m_to_pop);
+	
+			list_del (&(stack_top->m_to_pop));	/* del from to-pop */
+
+			/* traverse stack-top */	
+			if (!list_empty (p_to_pop)) {
+				p_cur = list_entry (
+						p_to_pop->prev, 
+						struct pr_task_node, 
+						m_to_pop)->mp_task;
+			} else {
+				printk ("[TREE] Nothing left, terminated");
+				break;
+			}
 		}
 	}
-	
+
+#if 0	
 	int first = 0;
 
 	/* save list in the correct order */
@@ -1297,7 +1360,7 @@ SYSCALL_DEFINE2(ptree,
 	read_unlock(&tasklist_lock);
 #endif
 
-	// return buf;
+	read_unlock(&tasklist_lock);
 	return 0x0f0f0f0f;
 }
 

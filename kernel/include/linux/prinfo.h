@@ -20,5 +20,16 @@ struct prlist_node {
 	struct list_head list;
 };
 
+struct pr_task_node {
+
+	/* a pointer to the 'real' task info */
+	struct task_struct *mp_task;
+	
+	/* this node canbe in several lists -> need list head for every list */
+	struct list_head m_visited;
+	struct list_head m_to_pop;
+	struct list_head m_output;  
+};
+
 /* Test function to print the prinfo */
 #endif
