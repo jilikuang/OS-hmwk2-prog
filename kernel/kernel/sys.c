@@ -1191,13 +1191,17 @@ static struct task_struct* find_unvisited_child (
 	struct task_struct *child;
 	struct pr_task_node *vst;
 
+	int in_the_visted_list = 0;
+
 	list_for_each_entry (child, p_children, children) {
 		list_for_each_entry (vst, p_visited, m_visited) {
 			if (child == vst->mp_task)
-				return child;
+				in_the_visted_list = 1;
+		}
+		if(in_the_visted_list == 0){
+			return child;
 		}
 	}
-
 	return NULL;
 }
 
@@ -1275,7 +1279,6 @@ SYSCALL_DEFINE2(ptree,
 						struct pr_task_node, 
 						m_to_pop)->mp_task;
 			}
-
 		}
 
 		/* if current process has unvisited child */
@@ -1299,6 +1302,7 @@ SYSCALL_DEFINE2(ptree,
 			list_add_tail(&new_node->m_visited, p_visited);
 			list_add_tail(&new_node->m_to_pop, p_to_pop);
 			list_add_tail(&new_node->m_output, p_output);	/* add to output queue */
+			/* Dont think we add to the output queqe at this point */
 		} 
 		/* No more children to work-on */
 		else {
