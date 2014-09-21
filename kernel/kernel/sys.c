@@ -1386,7 +1386,7 @@ SYSCALL_DEFINE2(ptree,
 	while (!list_empty (p_visited)) {
 		pos = p_visited->next;
 		list_del (pos);
-		kfree (pos);
+		kfree (list_entry (pos, struct pr_task_node, m_visited));
 	}
 
 	printk ("[TREE] Total number of tasks: %d, usr buffer size: %d\n", counter, kNr);
