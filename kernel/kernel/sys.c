@@ -1362,42 +1362,36 @@ SYSCALL_DEFINE2(ptree,
 	list_for_each_entry (p_node, p_visited, m_visited) {
 		printk ("[TREE] output: %d\n", p_node->mp_task->pid);
 	}
-#if 0	
-	int first = 0;
 
-	/* save list in the correct order */
-	while(!list_empty(p_output)){
+	/* save list to an prinfo array */
+	if(!list_empty(p_visited)){
 
-		/* special treatment for init_task, parent id = 0*/
-		if(first == 0){
-			buf mem allocation;
-			poplast(toreverse);
+		int nr = 0;
+		struct pr_task_node *pr_task_node_iter; 
+		struct task_struct *task_iter; 
 
-			buf->parent_pid = 0;
-			buf->pid = toreverse->pid;
-			buf->first_child_pid = toreverse->first_child_pid;
-			buf->next_sibling_pid = toreverse->next_sibling_pid;
-			buf->state = toreverse->state;
-			buf->uid = toreverse->uid;
-			buf->comm = toreverse->comm;
-			first = 1;
+		list_for_each (pr_task_node_iter, p_visited) {	
+			nr++;
+		}
+	
+		struct prinfo *output_prinfo_array; 
+
+		output_prinfo_array = (struct prinfo *)vmalloc(sizeof(struct prinfo)*nr);
+		if (output_prinfo_array == NULL) {
+			printk ("[TREE] memory allocation failure\n");
+			read_unlock (&tasklist_lock);
+			return -ENOMEM;
 		}
 
-		buf mem allocation;
-		poplast(toreverse);
-		buf->parent_pid = toreverse->parent_pid;
-		buf->pid = toreverse->pid;
-		buf->first_child_pid = toreverse->first_child_pid;
-		buf->next_sibling_pid = toreverse->next_sibling_pid;
-		buf->state = toreverse->state;
-		buf->uid = toreverse->uid;
-		buf->comm = toreverse->comm;
+		nr = 0;		
+		list_for_each_entry (task_iter, p_visited, mp_task) {
+			fill_in_prinfo(output_prinfo_array + sizeof(struct prinfo) * nr ,task_iter);
+			nr++;
+		}	
 	}
-	read_unlock(&tasklist_lock);
-#endif
 
 	read_unlock(&tasklist_lock);
-	return 0x0f0f0f0f;
+	return output_prinfo_array;
 }
 
 SYSCALL_DEFINE1(getsid, pid_t, pid)
