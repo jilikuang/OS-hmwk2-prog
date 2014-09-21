@@ -1211,7 +1211,6 @@ SYSCALL_DEFINE2(ptree,
 	LIST_HEAD(visited_head);	/* to remember where we've been */
 
 	struct pr_task_node *pos;
-	struct list_head *p_list = NULL;
 
 	/* Fast access to the Q head */
 	struct list_head *p_to_pop  = &to_pop_head;
@@ -1328,6 +1327,8 @@ SYSCALL_DEFINE2(ptree,
 
 	/* clean up stage 1 - free visited list */
 	while (!list_empty (p_visited)) {
+		struct list_head *p_list = NULL;
+
 		p_list = p_visited->next;
 		pos = list_entry(p_list, struct pr_task_node, m_visited);
 		list_del (p_list);
