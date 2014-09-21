@@ -1191,18 +1191,41 @@ static struct task_struct* find_unvisited_child (
 	struct task_struct *child;
 	struct pr_task_node *vst;
 
-	int in_the_visted_list = 0;
+	int in_the_visited_list = 0;
 
-	list_for_each_entry (child, p_children, children) {
+	list_for_each_entry (child, p_children, sibling) {
+	
+		in_the_visited_list = 0;
+	
+		printk ("\t[TREE] Testing unvisited child: %d\n", child->pid);
+		
 		list_for_each_entry (vst, p_visited, m_visited) {
-			if (child == vst->mp_task)
-				in_the_visted_list = 1;
+			if (child == vst->mp_task) {
+				in_the_visited_list = 1;
+				break;
+			}
 		}
-		if(in_the_visted_list == 0){
+
+		if (in_the_visited_list == 0){
+			printk ("[TREE] Found unvisited child: %d\n", child->pid);
 			return child;
 		}
 	}
+
 	return NULL;
+}
+
+static void test_init_child () {
+	extern struct task_struct init_task;
+	struct task_struct *p_task;
+	struct list_head *p_iter;
+	struct list_head *init_children = &(init_task.children);
+
+	list_for_each (p_iter, init_children) {	
+		p_task = list_entry  (p_iter, struct task_struct, sibling);
+		printk ("[TREE] init children list add: %x, %x\n", p_iter, p_task);
+		printk ("[TREE] init child pid: %d\n", p_task->pid);
+	}
 }
 
 /* @lfred */
@@ -1243,9 +1266,9 @@ SYSCALL_DEFINE2(ptree,
 
 	/* add init task to visited, to_pop list, and output list */
 	new_node->mp_task = p_cur;
-	list_add(p_to_pop, & new_node->m_visited);
-	list_add(p_visited, & new_node->m_to_pop);
-	list_add(p_output, & new_node->m_output);
+	list_add(p_to_pop,  & new_node->m_to_pop);
+	list_add(p_visited, & new_node->m_visited);
+	list_add(p_output,  & new_node->m_output);
 	
 	while (!list_empty (p_to_pop)) {
 
@@ -1257,7 +1280,7 @@ SYSCALL_DEFINE2(ptree,
 		/*	2. set p_pur to parent 		*/
 		if (list_empty(p_children)) {
 		
-			printk ("[TREE] output: case 1 - %d", p_cur->pid);
+			printk ("[TREE] output: case 1 - %d\n", p_cur->pid);
 	
 			/* get the tail of the output to_pop queue */
 			struct pr_task_node *queue_tail = 
@@ -1266,11 +1289,13 @@ SYSCALL_DEFINE2(ptree,
 					struct pr_task_node, 
 					m_to_pop);
 
+			printk ("[TREE] case 1 pop: %d\n", queue_tail->mp_task->pid);
+
 			list_add_tail (&(queue_tail->m_output), p_output);	/* add to output queue */
 			list_del (&(queue_tail->m_to_pop));	/* del from to-pop */
 	
 			if (list_empty (p_to_pop)) {
-				printk ("[TREE] WTF !!!");
+				printk ("[TREE] WTF !!!\n");
 				break;
 			} else {	
 				/* next should be the top of the to-pop stack */	
@@ -1278,17 +1303,19 @@ SYSCALL_DEFINE2(ptree,
 						p_to_pop->prev, 
 						struct pr_task_node, 
 						m_to_pop)->mp_task;
+				
+				printk ("[TREE] case 1: next p_cur - %d\n", p_cur->pid);
 			}
 		}
 
 		/* if current process has unvisited child */
 		else if ((p_unvisted_child = find_unvisited_child (p_children, p_visited)) != NULL) {
 		
-			printk ("[TREE] output: case 2 - %d", p_cur->pid);
+			printk ("[TREE] output: case 2 - %d\n", p_cur->pid);
 			new_node = (struct pr_task_node *)vmalloc(sizeof(struct pr_task_node));
 			
 			if (new_node == NULL) {
-				printk ("[TREE] memory allocation failure");
+				printk ("[TREE] memory allocation failure\n");
 				read_unlock (&tasklist_lock);
 				return -ENOMEM;
 			}
@@ -1306,7 +1333,7 @@ SYSCALL_DEFINE2(ptree,
 		} 
 		/* No more children to work-on */
 		else {
-			printk ("[TREE] The node has no unvisited children");
+			printk ("[TREE] output: case 3 - no unvisited children\n");
 			
 			/* get the tail of the output to_pop queue */
 			struct pr_task_node *stack_top = 
@@ -1315,16 +1342,22 @@ SYSCALL_DEFINE2(ptree,
 					struct pr_task_node, 
 					m_to_pop);
 	
+			printk ("[TREE] output: case 3: to pop: %d\n", stack_top->mp_task->pid);
+			
 			list_del (&(stack_top->m_to_pop));	/* del from to-pop */
+
+			printk ("[TREE] output: case 3: 2");
 
 			/* traverse stack-top */	
 			if (!list_empty (p_to_pop)) {
+				printk ("[TREE] output: case 3: 3");
 				p_cur = list_entry (
 						p_to_pop->prev, 
 						struct pr_task_node, 
 						m_to_pop)->mp_task;
+				printk ("[TREE] Case 3: next p_cur: %d\n", p_cur->pid);
 			} else {
-				printk ("[TREE] Nothing left, terminated");
+				printk ("[TREE] Nothing left, terminated\n");
 				break;
 			}
 		}
