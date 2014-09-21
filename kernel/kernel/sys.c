@@ -1141,16 +1141,36 @@ static int fill_in_prinfo(struct prinfo *info, struct task_struct *p)
 
 	info->parent_pid = p->parent->pid;
 	info->pid = p->pid;
-	info->first_child_pid = list_first_entry(
-			&p->children,
-			struct task_struct,
-			children)->pid;/* Jili: Data to confirm */
-	info->next_sibling_pid = list_first_entry(
-			&p->sibling,
-			struct task_struct,
-			sibling)->pid;/* Jili: Data to confirm */
+
+	if (!list_empty (&(p->children))) {
+		info->first_child_pid = list_first_entry(
+				&p->children,
+				struct task_struct,
+				sibling)->pid; /* Jili: Data to confirm */
+	} else {
+		info->first_child_pid = -1;
+	}
+
+	if (!list_empty (&(p->sibling))) {
+		
+		if (list_first_entry (&p->sibling, struct task_struct, children) == p->parent) {
+			info->next_sibling_pid = -1;
+		} else {
+			info->next_sibling_pid = list_first_entry(
+				&p->sibling,
+				struct task_struct,
+				sibling)->pid;/* Jili: Data to confirm */
+		}
+	} else {
+		info->next_sibling_pid = -1;
+	}
+
 	info->state = p->state;
-	info->uid = p->loginuid;
+	
+	if (p->cred != NULL)
+		info->uid = p->cred->uid;
+	else
+		info->uid = -1;
 	
 	strncpy(info->comm, p->comm, 64);
 	info->comm[63] = 0;
@@ -1245,7 +1265,7 @@ SYSCALL_DEFINE2(ptree,
 	int cnt = 0;
 
 	copy_from_user (&kNr, nr, sizeof(int));
-	p_kBuf = (struct prinfo*) kmalloc (kNr * sizeof (struct prinfo), GFP_ATOMIC);
+	p_kBuf = (struct prinfo*) kmalloc (kNr * sizeof(struct prinfo), GFP_ATOMIC);
 	new_node = (struct pr_task_node *)kmalloc(sizeof(struct pr_task_node), GFP_ATOMIC);
 
 	if (p_kBuf == NULL || new_node == NULL)

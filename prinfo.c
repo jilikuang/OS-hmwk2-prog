@@ -16,36 +16,111 @@ struct prinfo {
 
 #define __NR_ptree 223
 
+static int *gp_stack;
+static int g_stack_idx = 0;
+static int g_climit = 100;
+
+void init_stack () {
+
+	gp_stack = (int*) malloc (sizeof (int) * g_climit);
+	g_stack_idx = 0;
+}
+
+void deinit_stack () {
+	free (gp_stack);
+	g_stack_idx = 0;
+}
+
+void push (int x) {
+
+	if (g_stack_idx == g_climit - 1) {
+		g_climit += 100;
+		gp_stack = realloc (gp_stack, g_climit);
+	}
+
+	if (gp_stack != NULL) {
+		gp_stack[g_stack_idx++] = x;
+	} else {
+		printf ("Insufficient memory.\n");
+		exit (0);
+	}
+}
+
+int pop () {
+	int r = -1;
+	if (g_stack_idx > 0)
+		r = gp_stack[--g_stack_idx];
+	return r;
+}
+
+int peep () {
+	if (g_stack_idx > 0)
+		return gp_stack[g_stack_idx - 1];
+	else
+		return -1;
+}
+
+int num_of_stack () {
+	return g_stack_idx;
+}
+
+void print_tabs (int x) {
+	int i = 0;
+	for (i = 0; i < x; ++i)
+		printf ("\t");
+	return;
+}
+
 int main(int argc, char **argv) {
 
 	long ret;
 	struct prinfo* inf = (struct prinfo*) malloc (sizeof (struct prinfo) * 1000);
 	struct prinfo* p_info;
-	int nr = 1000, i;
+	int nr = 1000, i, tmp;
+
 	ret = syscall (__NR_ptree, inf, &nr);
 	printf ("nr = %d\n", nr);	
-	if (ret == 0) {
-		for (i=0; i<nr; ++i) {
-
-			p_info = &(inf[i]);
-			
-			printf ("%s,%d,%d\n", 
-				p_info->comm, 
-				p_info->pid, 
-				p_info->parent_pid);
-			/*
-			printf ("%s,%d,%ld,%d,%d,%d,%ld\n", 
-				p_info->comm, 
-				p_info->pid, 
-				p_info->state,
-				p_info->parent_pid, 
-				p_info->first_child_pid, 
-				p_info->next_sibling_pid, 
-				p_info->uid);
-			*/
-		}	
+	
+	if (ret != 0) {
+		printf ("System call error: %d\n", (int)ret);
+		free (inf);
+		return 0;
 	}
 
-	printf ("ret = %x\n", (int)ret);
+	init_stack ();
+
+	for (i=0; i<nr; ++i) {
+
+		p_info = &(inf[i]);
+
+		int cur_top = peep ();
+
+		if (cur_top == -1) {
+			push (p_info->pid);
+		} else if (cur_top == p_info->parent_pid) {
+			print_tabs (num_of_stack ());	
+			push (p_info->pid);
+		} else {
+			while ((tmp = pop ()) != -1) {
+				if (tmp == p_info->parent_pid) {
+					push (tmp);
+					print_tabs (num_of_stack());
+					push (p_info->pid);
+					break;
+				}
+			}
+		}
+					
+		printf ("%s,%d,%ld,%d,%d,%d,%ld\n", 
+			p_info->comm, 
+			p_info->pid, 				
+			p_info->state,
+			p_info->parent_pid, 
+			p_info->first_child_pid, 
+			p_info->next_sibling_pid, 
+			p_info->uid);
+	}
+
+	deinit_stack ();
 	return 0;
 }
