@@ -50,7 +50,6 @@
 
 #include <linux/kmsg_dump.h>
 #include <linux/prinfo.h>  /* @lfred */
-#include <linux/vmalloc.h> /* @lfred */
 
 /* Move somewhere else to avoid recompiling? */
 #include <generated/utsrelease.h>
@@ -1235,6 +1234,7 @@ SYSCALL_DEFINE2(ptree,
 {
 	struct task_struct *p_cur = NULL;
 	struct task_struct *p_unvisted_child = NULL;
+	int counter = 1;
 
 	/* step 1: find the root of the task tree */
 	p_cur = find_root_proc();
@@ -1242,18 +1242,16 @@ SYSCALL_DEFINE2(ptree,
 	/* initialize 3 queues used in the DFS algo */
 	LIST_HEAD(to_pop_head);		/* a temp storage */
 	LIST_HEAD(visited_head);	/* to remember where we've been */
-	LIST_HEAD(output_head);         /* output queue */
 
 	/* Fast access to the Q head */
 	struct list_head *p_to_pop  = &to_pop_head;
 	struct list_head *p_visited = &visited_head;
-	struct list_head *p_output  = &output_head;
 
 	/* lock the list access --> be sure to release */
 	read_lock(&tasklist_lock);
 
 	struct pr_task_node *new_node = 
-		(struct pr_task_node *)vmalloc(sizeof(struct pr_task_node));
+		(struct pr_task_node *)kmalloc(sizeof(struct pr_task_node), GFP_ATOMIC);
 	
 	if (new_node == NULL) {
 		read_unlock(&tasklist_lock);
@@ -1262,13 +1260,11 @@ SYSCALL_DEFINE2(ptree,
 
 	INIT_LIST_HEAD(& new_node->m_visited);
 	INIT_LIST_HEAD(& new_node->m_to_pop);
-	INIT_LIST_HEAD(& new_node->m_output);
 
 	/* add init task to visited, to_pop list, and output list */
 	new_node->mp_task = p_cur;
 	list_add(p_to_pop,  & new_node->m_to_pop);
 	list_add(p_visited, & new_node->m_visited);
-	list_add(p_output,  & new_node->m_output);
 	
 	while (!list_empty (p_to_pop)) {
 
@@ -1280,7 +1276,7 @@ SYSCALL_DEFINE2(ptree,
 		/*	2. set p_pur to parent 		*/
 		if (list_empty(p_children)) {
 		
-			printk ("[TREE] output: case 1 - %d\n", p_cur->pid);
+			//printk ("[TREE] output: case 1 - %d\n", p_cur->pid);
 	
 			/* get the tail of the output to_pop queue */
 			struct pr_task_node *queue_tail = 
@@ -1289,13 +1285,11 @@ SYSCALL_DEFINE2(ptree,
 					struct pr_task_node, 
 					m_to_pop);
 
-			printk ("[TREE] case 1 pop: %d\n", queue_tail->mp_task->pid);
-
-			list_add_tail (&(queue_tail->m_output), p_output);	/* add to output queue */
+			//printk ("[TREE] case 1 pop: %d\n", queue_tail->mp_task->pid);
 			list_del (&(queue_tail->m_to_pop));	/* del from to-pop */
 	
 			if (list_empty (p_to_pop)) {
-				printk ("[TREE] WTF !!!\n");
+				//printk ("[TREE] WTF !!!\n");
 				break;
 			} else {	
 				/* next should be the top of the to-pop stack */	
@@ -1304,18 +1298,18 @@ SYSCALL_DEFINE2(ptree,
 						struct pr_task_node, 
 						m_to_pop)->mp_task;
 				
-				printk ("[TREE] case 1: next p_cur - %d\n", p_cur->pid);
+				//printk ("[TREE] case 1: next p_cur - %d\n", p_cur->pid);
 			}
 		}
 
 		/* if current process has unvisited child */
 		else if ((p_unvisted_child = find_unvisited_child (p_children, p_visited)) != NULL) {
 		
-			printk ("[TREE] output: case 2 - %d\n", p_cur->pid);
-			new_node = (struct pr_task_node *)vmalloc(sizeof(struct pr_task_node));
+			//printk ("[TREE] output: case 2 - %d\n", p_cur->pid);
+			new_node = (struct pr_task_node *)kmalloc(sizeof(struct pr_task_node), GFP_ATOMIC);
 			
 			if (new_node == NULL) {
-				printk ("[TREE] memory allocation failure\n");
+				//printk ("[TREE] memory allocation failure\n");
 				read_unlock (&tasklist_lock);
 				return -ENOMEM;
 			}
@@ -1323,17 +1317,15 @@ SYSCALL_DEFINE2(ptree,
 			p_cur = new_node->mp_task = p_unvisted_child;
 			INIT_LIST_HEAD(&new_node->m_visited);
 			INIT_LIST_HEAD(&new_node->m_to_pop);
-			INIT_LIST_HEAD(&new_node->m_output);
 			
 			/* added to the visited and pop list */
+			counter++;
 			list_add_tail(&new_node->m_visited, p_visited);
 			list_add_tail(&new_node->m_to_pop, p_to_pop);
-			list_add_tail(&new_node->m_output, p_output);	/* add to output queue */
-			/* Dont think we add to the output queqe at this point */
 		} 
 		/* No more children to work-on */
 		else {
-			printk ("[TREE] output: case 3 - no unvisited children\n");
+			//printk ("[TREE] output: case 3 - no unvisited children\n");
 			
 			/* get the tail of the output to_pop queue */
 			struct pr_task_node *stack_top = 
@@ -1342,7 +1334,7 @@ SYSCALL_DEFINE2(ptree,
 					struct pr_task_node, 
 					m_to_pop);
 	
-			printk ("[TREE] output: case 3: to pop: %d\n", stack_top->mp_task->pid);
+			//printk ("[TREE] output: case 3: to pop: %d\n", stack_top->mp_task->pid);
 			list_del (&(stack_top->m_to_pop));	/* del from to-pop */
 
 			/* traverse stack-top */	
@@ -1352,13 +1344,14 @@ SYSCALL_DEFINE2(ptree,
 						struct pr_task_node, 
 						m_to_pop)->mp_task;
 			} else {
-				printk ("[TREE] Nothing left, terminated\n");
+				//printk ("[TREE] Nothing left, terminated\n");
 				break;
 			}
 		}
 	}
 
 	struct pr_task_node * p_node;
+	printk ("[TREE] Total number of tasks: %d\n", counter);
 	list_for_each_entry (p_node, p_visited, m_visited) {
 		printk ("[TREE] output: %d\n", p_node->mp_task->pid);
 	}
