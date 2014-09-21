@@ -1151,7 +1151,9 @@ static int fill_in_prinfo(struct prinfo *info, struct task_struct *p)
 			sibling)->pid;/* Jili: Data to confirm */
 	info->state = p->state;
 	info->uid = p->loginuid;
-	strcpy(info->comm, p->comm);
+	
+	strncpy(info->comm, p->comm, 64);
+	info->comm[63] = 0;
 
 #if 1
 	printk("%s", __func__);
@@ -1198,7 +1200,7 @@ static struct task_struct* find_unvisited_child (
 	
 		printk ("\t[TREE] Testing unvisited child: %d\n", child->pid);
 		
-		list_for_each_entry (vst, p_visited, m_visited) {
+		list_for_each_entry_reverse (vst, p_visited, m_visited) {
 			if (child == vst->mp_task) {
 				in_the_visited_list = 1;
 				break;
@@ -1234,7 +1236,20 @@ SYSCALL_DEFINE2(ptree,
 {
 	struct task_struct *p_cur = NULL;
 	struct task_struct *p_unvisted_child = NULL;
+	struct pr_task_node *new_node; 
 	int counter = 1;
+
+	/* kernel buffer */	
+	struct prinfo *p_kBuf = NULL;
+	int kNr = 0;
+	int cnt = 0;
+
+	copy_from_user (&kNr, nr, sizeof(int));
+	p_kBuf = (struct prinfo*) kmalloc (kNr * sizeof (struct prinfo), GFP_ATOMIC);
+	new_node = (struct pr_task_node *)kmalloc(sizeof(struct pr_task_node), GFP_ATOMIC);
+
+	if (p_kBuf == NULL || new_node == NULL)
+		return -ENOMEM;
 
 	/* step 1: find the root of the task tree */
 	p_cur = find_root_proc();
@@ -1250,14 +1265,6 @@ SYSCALL_DEFINE2(ptree,
 	/* lock the list access --> be sure to release */
 	read_lock(&tasklist_lock);
 
-	struct pr_task_node *new_node = 
-		(struct pr_task_node *)kmalloc(sizeof(struct pr_task_node), GFP_ATOMIC);
-	
-	if (new_node == NULL) {
-		read_unlock(&tasklist_lock);
-		return -ENOMEM;
-	}
-
 	INIT_LIST_HEAD(& new_node->m_visited);
 	INIT_LIST_HEAD(& new_node->m_to_pop);
 
@@ -1265,6 +1272,7 @@ SYSCALL_DEFINE2(ptree,
 	new_node->mp_task = p_cur;
 	list_add(p_to_pop,  & new_node->m_to_pop);
 	list_add(p_visited, & new_node->m_visited);
+	fill_in_prinfo (&(p_kBuf[cnt++]), p_cur);
 	
 	while (!list_empty (p_to_pop)) {
 
@@ -1322,6 +1330,7 @@ SYSCALL_DEFINE2(ptree,
 			counter++;
 			list_add_tail(&new_node->m_visited, p_visited);
 			list_add_tail(&new_node->m_to_pop, p_to_pop);
+			fill_in_prinfo (&(p_kBuf[cnt++]), p_cur);
 		} 
 		/* No more children to work-on */
 		else {
@@ -1349,42 +1358,34 @@ SYSCALL_DEFINE2(ptree,
 			}
 		}
 	}
-
-	struct pr_task_node * p_node;
-	printk ("[TREE] Total number of tasks: %d\n", counter);
-	list_for_each_entry (p_node, p_visited, m_visited) {
-		printk ("[TREE] output: %d\n", p_node->mp_task->pid);
-	}
-
-	/* save list to an prinfo array */
-	if(!list_empty(p_visited)){
-
-		int nr = 0;
-		struct pr_task_node *pr_task_node_iter; 
-		struct task_struct *task_iter; 
-
-		list_for_each (pr_task_node_iter, p_visited) {	
-			nr++;
-		}
 	
-		struct prinfo *output_prinfo_array; 
+	read_unlock(&tasklist_lock);
 
-		output_prinfo_array = (struct prinfo *)vmalloc(sizeof(struct prinfo)*nr);
-		if (output_prinfo_array == NULL) {
-			printk ("[TREE] memory allocation failure\n");
-			read_unlock (&tasklist_lock);
-			return -ENOMEM;
-		}
-
-		nr = 0;		
-		list_for_each_entry (task_iter, p_visited, mp_task) {
-			fill_in_prinfo(output_prinfo_array + sizeof(struct prinfo) * nr ,task_iter);
-			nr++;
-		}	
+	/* clean up stage 1 - free visited list */
+	struct pr_task_node *pos;
+	while (!list_empty (p_visited)) {
+		pos = p_visited->next;
+		list_del (pos);
+		kfree (pos);
 	}
 
-	read_unlock(&tasklist_lock);
-	return output_prinfo_array;
+	printk ("[TREE] Total number of tasks: %d, usr buffer size: %d\n", counter, kNr);
+
+	cnt = (cnt > kNr)? kNr: cnt;	
+	if (copy_to_user (buf, p_kBuf, cnt * sizeof (struct prinfo)) != 0) {
+		printk ("[TREE] copy to user failed - 1\n");
+		return -1;
+	}
+
+	if (copy_to_user (nr, &counter, sizeof (int)) != 0) {
+		printk ("[TREE] copy_to_user failed - 2\n");
+		return -1;
+	}
+
+	/* clean up stage 2 */
+	kfree (p_kBuf);
+
+	return 0;
 }
 
 SYSCALL_DEFINE1(getsid, pid_t, pid)

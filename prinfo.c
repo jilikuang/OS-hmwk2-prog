@@ -19,9 +19,33 @@ struct prinfo {
 int main(int argc, char **argv) {
 
 	long ret;
-	struct prinfo* inf = NULL;
-	int y;
-	ret = syscall (__NR_ptree, inf, &y);
+	struct prinfo* inf = (struct prinfo*) malloc (sizeof (struct prinfo) * 1000);
+	struct prinfo* p_info;
+	int nr = 1000, i;
+	ret = syscall (__NR_ptree, inf, &nr);
+	printf ("nr = %d\n", nr);	
+	if (ret == 0) {
+		for (i=0; i<nr; ++i) {
+
+			p_info = &(inf[i]);
+			
+			printf ("%s,%d,%d\n", 
+				p_info->comm, 
+				p_info->pid, 
+				p_info->parent_pid);
+			/*
+			printf ("%s,%d,%ld,%d,%d,%d,%ld\n", 
+				p_info->comm, 
+				p_info->pid, 
+				p_info->state,
+				p_info->parent_pid, 
+				p_info->first_child_pid, 
+				p_info->next_sibling_pid, 
+				p_info->uid);
+			*/
+		}	
+	}
+
 	printf ("ret = %x\n", (int)ret);
 	return 0;
 }
