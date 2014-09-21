@@ -1107,33 +1107,6 @@ SYSCALL_DEFINE0(getpgrp)
 
 #endif
 
-/* Test function to print the prinfo */
-static inline void test_print_prinfo(struct prinfo *info)
-{
-	printk("(%d, %d, %d, %d, %ld, %ld, %s)\n",
-			info->parent_pid, info->pid,
-			info->first_child_pid,
-			info->next_sibling_pid,
-			info->state, info->uid,
-			info->comm);
-}
-
-/* Test function to show all prinfo in the list */
-static int test_traverse_prlist(struct list_head *head)
-{
-	int retral = 0;
-	struct list_head *p_list = NULL;
-	struct prlist_node *p_node = NULL;
-
-	list_for_each(p_list, head) {
-		p_node = list_entry(p_list, struct prlist_node, list);
-		printk("%s", __func__);
-		test_print_prinfo(&p_node->info);
-	}
-
-	return retral;
-}
-
 /* Fill in prinfo with given task struct */
 static int fill_in_prinfo(struct prinfo *info, struct task_struct *p)
 {
@@ -1174,11 +1147,6 @@ static int fill_in_prinfo(struct prinfo *info, struct task_struct *p)
 	
 	strncpy(info->comm, p->comm, 64);
 	info->comm[63] = 0;
-
-#if 1
-	printk("%s", __func__);
-	test_print_prinfo(info);
-#endif
 
 	return retval;
 }

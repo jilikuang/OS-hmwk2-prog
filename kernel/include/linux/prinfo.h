@@ -13,13 +13,6 @@ struct prinfo {
 	char comm[64];			/* name of program executed */
 };
 
-/* Jili */
-/* Define prinfo info list to restore DFS-traversed processes */
-struct prlist_node {
-	struct prinfo info;
-	struct list_head list;
-};
-
 struct pr_task_node {
 
 	/* a pointer to the 'real' task info */
