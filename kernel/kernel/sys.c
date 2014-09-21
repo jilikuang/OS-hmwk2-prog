@@ -1152,25 +1152,10 @@ static int fill_in_prinfo(struct prinfo *info, struct task_struct *p)
 }
 
 /* @lfred: the function is used to retrieve the root node */
-static struct task_struct* find_root_proc () {
+static struct task_struct* find_root_proc (void) {
 
 	extern struct task_struct init_task;
 	return &init_task;
-}
-
-/* @lfred: the function is used to check if the node is traversed. */
-static int is_node_visited (
-	struct task_struct *p_task, 
-	struct list_head *p_list) {
-	
-	struct pr_task_node *pos;
-
-	list_for_each_entry (pos, p_list, m_visited) {
-		if (pos->mp_task == p_task)
-			return 1;
-	}	
-
-	return -1;
 }
 
 static struct task_struct* find_unvisited_child (
@@ -1204,24 +1189,13 @@ static struct task_struct* find_unvisited_child (
 	return NULL;
 }
 
-static void test_init_child () {
-	extern struct task_struct init_task;
-	struct task_struct *p_task;
-	struct list_head *p_iter;
-	struct list_head *init_children = &(init_task.children);
-
-	list_for_each (p_iter, init_children) {	
-		p_task = list_entry  (p_iter, struct task_struct, sibling);
-		printk ("[TREE] init children list add: %x, %x\n", p_iter, p_task);
-		printk ("[TREE] init child pid: %d\n", p_task->pid);
-	}
-}
-
 /* @lfred */
 SYSCALL_DEFINE2(ptree, 
 		struct prinfo*, buf,
 		int*, nr)
 {
+	int retval = 0;
+
 	struct task_struct *p_cur = NULL;
 	struct task_struct *p_unvisted_child = NULL;
 	struct pr_task_node *new_node; 
@@ -1232,7 +1206,18 @@ SYSCALL_DEFINE2(ptree,
 	int kNr = 0;
 	int cnt = 0;
 
-	copy_from_user (&kNr, nr, sizeof(int));
+	/* initialize 3 queues used in the DFS algo */
+	LIST_HEAD(to_pop_head);		/* a temp storage */
+	LIST_HEAD(visited_head);	/* to remember where we've been */
+
+	struct pr_task_node *pos;
+	struct list_head *p_list = NULL;
+
+	/* Fast access to the Q head */
+	struct list_head *p_to_pop  = &to_pop_head;
+	struct list_head *p_visited = &visited_head;
+
+	retval = copy_from_user (&kNr, nr, sizeof(int));
 	p_kBuf = (struct prinfo*) kmalloc (kNr * sizeof(struct prinfo), GFP_ATOMIC);
 	new_node = (struct pr_task_node *)kmalloc(sizeof(struct pr_task_node), GFP_ATOMIC);
 
@@ -1241,14 +1226,6 @@ SYSCALL_DEFINE2(ptree,
 
 	/* step 1: find the root of the task tree */
 	p_cur = find_root_proc();
-
-	/* initialize 3 queues used in the DFS algo */
-	LIST_HEAD(to_pop_head);		/* a temp storage */
-	LIST_HEAD(visited_head);	/* to remember where we've been */
-
-	/* Fast access to the Q head */
-	struct list_head *p_to_pop  = &to_pop_head;
-	struct list_head *p_visited = &visited_head;
 
 	/* lock the list access --> be sure to release */
 	read_lock(&tasklist_lock);
@@ -1350,10 +1327,10 @@ SYSCALL_DEFINE2(ptree,
 	read_unlock(&tasklist_lock);
 
 	/* clean up stage 1 - free visited list */
-	struct pr_task_node *pos;
 	while (!list_empty (p_visited)) {
-		pos = p_visited->next;
-		list_del (pos);
+		p_list = p_visited->next;
+		pos = list_entry(p_list, struct pr_task_node, m_visited);
+		list_del (p_list);
 		kfree (pos);
 	}
 
