@@ -1343,19 +1343,14 @@ SYSCALL_DEFINE2(ptree,
 					m_to_pop);
 	
 			printk ("[TREE] output: case 3: to pop: %d\n", stack_top->mp_task->pid);
-			
 			list_del (&(stack_top->m_to_pop));	/* del from to-pop */
-
-			printk ("[TREE] output: case 3: 2");
 
 			/* traverse stack-top */	
 			if (!list_empty (p_to_pop)) {
-				printk ("[TREE] output: case 3: 3");
 				p_cur = list_entry (
 						p_to_pop->prev, 
 						struct pr_task_node, 
 						m_to_pop)->mp_task;
-				printk ("[TREE] Case 3: next p_cur: %d\n", p_cur->pid);
 			} else {
 				printk ("[TREE] Nothing left, terminated\n");
 				break;
@@ -1363,6 +1358,10 @@ SYSCALL_DEFINE2(ptree,
 		}
 	}
 
+	struct pr_task_node * p_node;
+	list_for_each_entry (p_node, p_visited, m_visited) {
+		printk ("[TREE] output: %d\n", p_node->mp_task->pid);
+	}
 #if 0	
 	int first = 0;
 
