@@ -146,5 +146,5 @@ int main(void)
 	#else
 	test_function(300);
 	#endif
-
+	return 0;
 }
