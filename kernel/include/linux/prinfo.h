@@ -25,7 +25,10 @@ struct pr_task_node {
 };
 
 extern struct task_struct init;
-#define PRINTK printk
-
+#if 1
+	#define PRINTK(...) 
+#else
+	#define PRINTK printk
+#endif
 /* Test function to print the prinfo */
 #endif

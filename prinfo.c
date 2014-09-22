@@ -132,11 +132,15 @@ int test_function(int n)
 	return 0;
 }
 
-int main (void){
-	
-	for(int j = 0; j<10; j++){
-		for(int i = 0; i<150; i++){
+int main(void)
+{
+	int j = 0;
+
+	for (; j < 10; j++) {
+		int i = 0;
+
+		for (; i < 150; i++)
 			test_function(i);
-		}
 	}
+	return 0;
 }
