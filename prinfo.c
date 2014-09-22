@@ -133,10 +133,16 @@ int test_function(int n)
 }
 
 int main (void){
-	
-	for(int j = 0; j<10; j++){
-		for(int i = 0; i<150; i++){
+	#if 0
+	int j = 0;
+	for(; j<10; j++){
+		int i = 0;
+		for(; i<150; i++){
 			test_function(i);
 		}
 	}
+	#else
+	test_function(300);
+	#endif
+
 }
