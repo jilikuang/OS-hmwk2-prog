@@ -77,13 +77,13 @@ void print_tabs(int x)
 		printf("\t");
 }
 
-int main(int argc, char **argv)
+int test_function(int n)
 {
 	long ret;
 	struct prinfo *inf =
-		(struct prinfo *) malloc(sizeof(struct prinfo) * 1000);
+		(struct prinfo *) malloc(sizeof(struct prinfo) * n);
 	struct prinfo *p_info;
-	int nr = 1000, i, tmp;
+	int nr = n, i, tmp;
 
 	ret = syscall(__NR_ptree, inf, &nr);
 	printf("nr = %d\n", nr);
@@ -130,4 +130,13 @@ int main(int argc, char **argv)
 
 	deinit_stack();
 	return 0;
+}
+
+int main (void){
+	
+	for(int j = 0; j<10; j++){
+		for(int i = 0; i<150; i++){
+			test_function(i);
+		}
+	}
 }
