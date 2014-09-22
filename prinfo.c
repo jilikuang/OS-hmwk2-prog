@@ -134,6 +134,7 @@ int test_function(int n)
 
 int main(void)
 {
+	#if 0
 	int j = 0;
 
 	for (; j < 10; j++) {
@@ -142,5 +143,8 @@ int main(void)
 		for (; i < 150; i++)
 			test_function(i);
 	}
-	return 0;
+	#else
+	test_function(300);
+	#endif
+
 }
