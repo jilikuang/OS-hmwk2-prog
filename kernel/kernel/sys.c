@@ -1199,6 +1199,7 @@ SYSCALL_DEFINE2(ptree,
 	struct task_struct *p_cur = NULL;
 	struct task_struct *p_unvisted_child = NULL;
 	struct pr_task_node *new_node; 
+
 	int counter = 1;
 
 	/* kernel buffer */	
@@ -1210,24 +1211,44 @@ SYSCALL_DEFINE2(ptree,
 	LIST_HEAD(to_pop_head);		/* a temp storage */
 	LIST_HEAD(visited_head);	/* to remember where we've been */
 
-	struct pr_task_node *pos;
-
 	/* Fast access to the Q head */
 	struct list_head *p_to_pop  = &to_pop_head;
 	struct list_head *p_visited = &visited_head;
 
-	retval = copy_from_user (&kNr, nr, sizeof(int));
-	p_kBuf = (struct prinfo*) kmalloc (kNr * sizeof(struct prinfo), GFP_ATOMIC);
-	new_node = (struct pr_task_node *)kmalloc(sizeof(struct pr_task_node), GFP_ATOMIC);
+	/* Check pointer validity */
+	if (!buf || !nr)
+		return -EFAULT;
 
-	if (p_kBuf == NULL || new_node == NULL)
+	retval = copy_from_user (&kNr, nr, sizeof(int));
+	/* retval should be 0. > 0 means some bytes are not copied */
+	if (retval > 0)
+		return -EFAULT;
+
+	if (kNr == 0)
+		return -EFAULT;
+
+	if (!access_ok(VERIFY_WRITE, buf, kNr * sizeof(struct prinfo)))
+		return -EFAULT;
+
+	p_kBuf = (struct prinfo *)kmalloc(kNr * sizeof(struct prinfo), GFP_ATOMIC);
+	if (p_kBuf == NULL)
 		return -ENOMEM;
+
+	new_node = (struct pr_task_node *)kmalloc(sizeof(struct pr_task_node), GFP_ATOMIC);
+	if (new_node == NULL) {
+		kfree(p_kBuf);
+		return -ENOMEM;
+	}
+
+	retval = 0;
+
+	/* lock the list access --> be sure to release */
+	/* After this section, should not directly return */
+	/* Need to unlock and free memory */
+	read_lock(&tasklist_lock);
 
 	/* step 1: find the root of the task tree */
 	p_cur = find_root_proc();
-
-	/* lock the list access --> be sure to release */
-	read_lock(&tasklist_lock);
 
 	INIT_LIST_HEAD(& new_node->m_visited);
 	INIT_LIST_HEAD(& new_node->m_to_pop);
@@ -1236,7 +1257,10 @@ SYSCALL_DEFINE2(ptree,
 	new_node->mp_task = p_cur;
 	list_add(p_to_pop,  & new_node->m_to_pop);
 	list_add(p_visited, & new_node->m_visited);
-	fill_in_prinfo (&(p_kBuf[cnt++]), p_cur);
+	fill_in_prinfo(&(p_kBuf[cnt++]), p_cur);
+	/* Don't need to continue if buffer is not enough */
+	if (cnt == kNr)
+		goto __algo_end;
 	
 	while (!list_empty (p_to_pop)) {
 
@@ -1247,9 +1271,9 @@ SYSCALL_DEFINE2(ptree,
 		/* 	1. add to outputi		*/
 		/*	2. set p_pur to parent 		*/
 		if (list_empty(p_children)) {
-		
+
 			//printk ("[TREE] output: case 1 - %d\n", p_cur->pid);
-	
+
 			/* get the tail of the output to_pop queue */
 			struct pr_task_node *queue_tail = 
 				list_entry (
@@ -1282,8 +1306,8 @@ SYSCALL_DEFINE2(ptree,
 			
 			if (new_node == NULL) {
 				//printk ("[TREE] memory allocation failure\n");
-				read_unlock (&tasklist_lock);
-				return -ENOMEM;
+				retval = -ENOMEM;
+				goto __algo_end;
 			}
 			
 			p_cur = new_node->mp_task = p_unvisted_child;
@@ -1295,6 +1319,9 @@ SYSCALL_DEFINE2(ptree,
 			list_add_tail(&new_node->m_visited, p_visited);
 			list_add_tail(&new_node->m_to_pop, p_to_pop);
 			fill_in_prinfo (&(p_kBuf[cnt++]), p_cur);
+			/* Don't need to continue if buffer is not enough */
+			if (cnt == kNr)
+				goto __algo_end;
 		} 
 		/* No more children to work-on */
 		else {
@@ -1322,11 +1349,13 @@ SYSCALL_DEFINE2(ptree,
 			}
 		}
 	}
-	
+
+__algo_end:
 	read_unlock(&tasklist_lock);
 
 	/* clean up stage 1 - free visited list */
-	while (!list_empty (p_visited)) {
+	while (!list_empty(p_visited)) {
+		struct pr_task_node *pos = NULL;
 		struct list_head *p_list = NULL;
 
 		p_list = p_visited->next;
@@ -1335,23 +1364,30 @@ SYSCALL_DEFINE2(ptree,
 		kfree (pos);
 	}
 
+	/* If come here for abortion, exit directly */
+	if (retval < 0)
+		goto __ptree_exit;
+
 	printk ("[TREE] Total number of tasks: %d, usr buffer size: %d\n", counter, kNr);
 
 	cnt = (cnt > kNr)? kNr: cnt;	
 	if (copy_to_user (buf, p_kBuf, cnt * sizeof (struct prinfo)) != 0) {
 		printk ("[TREE] copy to user failed - 1\n");
-		return -1;
+		retval = -EFAULT;
+		goto __ptree_exit;
 	}
 
 	if (copy_to_user (nr, &counter, sizeof (int)) != 0) {
 		printk ("[TREE] copy_to_user failed - 2\n");
-		return -1;
+		retval = -EFAULT;
 	}
+
+__ptree_exit:
 
 	/* clean up stage 2 */
 	kfree (p_kBuf);
 
-	return 0;
+	return retval;
 }
 
 SYSCALL_DEFINE1(getsid, pid_t, pid)
