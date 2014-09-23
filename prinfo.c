@@ -134,13 +134,15 @@ int test_function(int n)
 
 int main(void)
 {
-	#if 0
+	#if 1
 	int j = 0;
+	int i = 0;
 
-	for (; j < 10; j++) {
-		int i = 0;
+	for (j = 0; j < 10; j++) {
 
-		for (; i < 150; i++)
+		fprintf(stderr, "Round: %d\n", j);
+
+		for (i = 0; i < 150; i++)
 			test_function(i);
 	}
 	#else

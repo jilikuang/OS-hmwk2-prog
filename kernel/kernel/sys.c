@@ -1121,7 +1121,7 @@ static int fill_in_prinfo(struct prinfo *info, struct task_struct *p)
 				struct task_struct,
 				sibling)->pid; /* Jili: Data to confirm */
 	else
-		info->first_child_pid = -1;
+		info->first_child_pid = 0;
 
 	if (!list_empty(&(p->sibling))) {
 
@@ -1129,21 +1129,21 @@ static int fill_in_prinfo(struct prinfo *info, struct task_struct *p)
 			&p->sibling,
 			struct task_struct,
 			children) == p->parent)
-				info->next_sibling_pid = -1;
+				info->next_sibling_pid = 0;
 		else
 			info->next_sibling_pid = list_first_entry(
 				&p->sibling,
 				struct task_struct,
 				sibling)->pid;/* Jili: Data to confirm */
 	} else
-		info->next_sibling_pid = -1;
+		info->next_sibling_pid = 0;
 
 	info->state = p->state;
 
 	if (p->cred != NULL)
 		info->uid = p->cred->uid;
 	else
-		info->uid = -1;
+		info->uid = 0;
 
 	strncpy(info->comm, p->comm, 64);
 	info->comm[63] = 0;
