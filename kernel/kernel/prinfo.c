@@ -1,57 +1,9 @@
 /* Implementation of prinfo system call */
 
-#include <linux/export.h>
-#include <linux/mm.h>
-#include <linux/utsname.h>
-#include <linux/mman.h>
-#include <linux/reboot.h>
-#include <linux/prctl.h>
-#include <linux/highuid.h>
-#include <linux/fs.h>
-#include <linux/kmod.h>
-#include <linux/perf_event.h>
-#include <linux/resource.h>
-#include <linux/kernel.h>
-#include <linux/kexec.h>
-#include <linux/workqueue.h>
-#include <linux/capability.h>
-#include <linux/device.h>
-#include <linux/key.h>
-#include <linux/times.h>
-#include <linux/posix-timers.h>
-#include <linux/security.h>
-#include <linux/dcookies.h>
-#include <linux/suspend.h>
-#include <linux/tty.h>
-#include <linux/signal.h>
-#include <linux/cn_proc.h>
-#include <linux/getcpu.h>
-#include <linux/task_io_accounting_ops.h>
-#include <linux/seccomp.h>
-#include <linux/cpu.h>
-#include <linux/personality.h>
-#include <linux/ptrace.h>
-#include <linux/fs_struct.h>
-#include <linux/gfp.h>
-#include <linux/syscore_ops.h>
-#include <linux/version.h>
-#include <linux/ctype.h>
-#include <linux/mm.h>
-#include <linux/mempolicy.h>
-
-#include <linux/compat.h>
 #include <linux/syscalls.h>
-#include <linux/kprobes.h>
-#include <linux/user_namespace.h>
-
-#include <linux/kmsg_dump.h>
-
-/* Move somewhere else to avoid recompiling? */
-#include <generated/utsrelease.h>
-
+#include <linux/sched.h>
+#include <linux/slab.h>
 #include <asm/uaccess.h>
-#include <asm/io.h>
-#include <asm/unistd.h>
 
 #include <linux/prinfo.h>  /* @lfred */
 
