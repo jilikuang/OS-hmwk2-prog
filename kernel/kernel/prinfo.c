@@ -16,25 +16,25 @@ static int fill_in_prinfo(struct prinfo *info, struct task_struct *p)
 	info->pid = p->pid;
 
 	if (!list_empty(&(p->children)))
-		info->first_child_pid = list_first_entry(
-				&p->children,
+		info->first_child_pid = list_entry(
+				p->children.prev,
 				struct task_struct,
-				sibling)->pid; /* Jili: Data to confirm */
+				sibling)->pid;
 	else
 		info->first_child_pid = 0;
 
 	if (!list_empty(&(p->sibling))) {
 
-		if (list_first_entry(
-			&p->sibling,
+		if (list_entry(
+			p->sibling.prev,
 			struct task_struct,
 			children) == p->parent)
 				info->next_sibling_pid = 0;
 		else
-			info->next_sibling_pid = list_first_entry(
-				&p->sibling,
+			info->next_sibling_pid = list_entry(
+				p->sibling.prev,
 				struct task_struct,
-				sibling)->pid;/* Jili: Data to confirm */
+				sibling)->pid;
 	} else
 		info->next_sibling_pid = 0;
 
