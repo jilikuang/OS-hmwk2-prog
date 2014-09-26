@@ -85,6 +85,9 @@ int test_function(int n)
 	struct prinfo *p_info;
 	int nr = n, i, tmp;
 
+	if (inf == NULL)
+		return -2;
+
 	ret = syscall(__NR_ptree, inf, &nr);
 	/* fprintf(stderr, "nr = %d\n", nr); */
 
@@ -94,8 +97,10 @@ int test_function(int n)
 		return 0;
 	}
 
-	if (nr == n)
+	if (nr == n) {
+		free(inf);
 		return -1;
+	}
 
 	init_stack();
 
