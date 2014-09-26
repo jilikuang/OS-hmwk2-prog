@@ -85,13 +85,21 @@ int test_function(int n)
 	struct prinfo *p_info;
 	int nr = n, i, tmp;
 
+	if (inf == NULL)
+		return -2;
+
 	ret = syscall(__NR_ptree, inf, &nr);
-	printf("nr = %d\n", nr);
+	/* fprintf(stderr, "nr = %d\n", nr); */
 
 	if (ret != 0) {
 		printf("System call error: %d\n", (int)ret);
 		free(inf);
 		return 0;
+	}
+
+	if (nr == n) {
+		free(inf);
+		return -1;
 	}
 
 	init_stack();
@@ -129,12 +137,12 @@ int test_function(int n)
 	}
 
 	deinit_stack();
-	return 0;
+	return nr;
 }
 
 int main(void)
 {
-	#if 1
+	#if 0
 	int j = 0;
 	int i = 0;
 
@@ -146,7 +154,11 @@ int main(void)
 			test_function(i);
 	}
 	#else
-	test_function(300);
+	int param = 20;
+
+	while (test_function(param) == -1)
+		param += 20;
+
 	#endif
 	return 0;
 }
