@@ -49,8 +49,6 @@
 #include <linux/user_namespace.h>
 
 #include <linux/kmsg_dump.h>
-#include <linux/prinfo.h>  /* @lfred */
-
 /* Move somewhere else to avoid recompiling? */
 #include <generated/utsrelease.h>
 
@@ -536,7 +534,7 @@ void ctrl_alt_del(void)
 	else
 		kill_cad_pid(SIGINT, 1);
 }
-
+	
 /*
  * Unprivileged users may change the real gid to the effective gid
  * or vice versa.  (BSD-style)
@@ -550,7 +548,7 @@ void ctrl_alt_del(void)
  *
  * The general idea is that a program which uses just setregid() will be
  * 100% compatible with BSD.  A program which uses just setgid() will be
- * 100% compatible with POSIX with saved IDs.
+ * 100% compatible with POSIX with saved IDs. 
  *
  * SMP: There are not races, the GIDs are checked only by filesystem
  *      operations (as far as semantic preservation is concerned).
@@ -598,7 +596,7 @@ error:
 }
 
 /*
- * setgid() is implemented like SysV w/ SAVED_IDS
+ * setgid() is implemented like SysV w/ SAVED_IDS 
  *
  * SMP: Same implicit races as above.
  */
@@ -670,7 +668,7 @@ static int set_user(struct cred *new)
  *
  * The general idea is that a program which uses just setreuid() will be
  * 100% compatible with BSD.  A program which uses just setuid() will be
- * 100% compatible with POSIX with saved IDs.
+ * 100% compatible with POSIX with saved IDs. 
  */
 SYSCALL_DEFINE2(setreuid, uid_t, ruid, uid_t, euid)
 {
@@ -721,17 +719,17 @@ error:
 	abort_creds(new);
 	return retval;
 }
-
+		
 /*
- * setuid() is implemented like SysV with SAVED_IDS
- *
+ * setuid() is implemented like SysV with SAVED_IDS 
+ * 
  * Note that SAVED_ID's is deficient in that a setuid root program
- * like sendmail, for example, cannot set its uid to be a normal
+ * like sendmail, for example, cannot set its uid to be a normal 
  * user and then switch back, because if you're root, setuid() sets
  * the saved uid too.  If you don't like this, blame the bright people
  * in the POSIX committee and/or USG.  Note that the BSD-style setreuid()
  * will allow a root program to temporarily drop privileges and be able to
- * regain them by swapping the real and effective uid.
+ * regain them by swapping the real and effective uid.  
  */
 SYSCALL_DEFINE1(setuid, uid_t, uid)
 {
@@ -1107,285 +1105,6 @@ SYSCALL_DEFINE0(getpgrp)
 
 #endif
 
-/* Fill in prinfo with given task struct */
-static int fill_in_prinfo(struct prinfo *info, struct task_struct *p)
-{
-	int retval = 0;
-
-	info->parent_pid = p->parent->pid;
-	info->pid = p->pid;
-
-	if (!list_empty(&(p->children)))
-		info->first_child_pid = list_first_entry(
-				&p->children,
-				struct task_struct,
-				sibling)->pid; /* Jili: Data to confirm */
-	else
-		info->first_child_pid = 0;
-
-	if (!list_empty(&(p->sibling))) {
-
-		if (list_first_entry(
-			&p->sibling,
-			struct task_struct,
-			children) == p->parent)
-				info->next_sibling_pid = 0;
-		else
-			info->next_sibling_pid = list_first_entry(
-				&p->sibling,
-				struct task_struct,
-				sibling)->pid;/* Jili: Data to confirm */
-	} else
-		info->next_sibling_pid = 0;
-
-	info->state = p->state;
-
-	if (p->cred != NULL)
-		info->uid = p->cred->uid;
-	else
-		info->uid = 0;
-
-	strncpy(info->comm, p->comm, 64);
-	info->comm[63] = 0;
-
-	return retval;
-}
-
-/* @lfred: the function is used to retrieve the root node */
-static struct task_struct *find_root_proc(void)
-{
-	return &init_task;
-}
-
-static struct task_struct *find_unvisited_child(
-	struct list_head *p_children,
-	struct list_head *p_visited) {
-
-	struct task_struct *child;
-	struct pr_task_node *vst;
-
-	int in_the_visited_list = 0;
-
-	list_for_each_entry(child, p_children, sibling) {
-
-		in_the_visited_list = 0;
-
-		PRINTK("\t[TREE] Testing unvisited child: %d\n", child->pid);
-
-		list_for_each_entry_reverse(vst, p_visited, m_visited) {
-			if (child == vst->mp_task) {
-				in_the_visited_list = 1;
-				break;
-			}
-		}
-
-		if (in_the_visited_list == 0) {
-			PRINTK("[TREE] Fnd unvisited chd: %d\n", child->pid);
-			return child;
-		}
-	}
-
-	return NULL;
-}
-
-/* @lfred */
-SYSCALL_DEFINE2(ptree,
-		struct prinfo*, buf,
-		int*, nr)
-{
-	int retval = 0;
-
-	struct task_struct *p_cur = NULL;
-	struct task_struct *p_unvisted_child = NULL;
-	struct pr_task_node *new_node;
-
-	int counter = 1;
-
-	/* kernel buffer */
-	struct prinfo *p_kBuf = NULL;
-	int kNr = 0;
-	int cnt = 0;
-
-	/* initialize 3 queues used in the DFS algo */
-	LIST_HEAD(to_pop_head);		/* a temp storage */
-	LIST_HEAD(visited_head);	/* to remember where we've been */
-
-	/* Fast access to the Q head */
-	struct list_head *p_to_pop  = &to_pop_head;
-	struct list_head *p_visited = &visited_head;
-
-	/* Check pointer validity */
-	if (!buf || !nr)
-		return -EFAULT;
-
-	retval = copy_from_user(&kNr, nr, sizeof(int));
-
-	/* retval should be 0. > 0 means some bytes are not copied */
-	if (retval > 0)
-		return -EFAULT;
-
-	if (kNr == 0)
-		return -EFAULT;
-
-	if (!access_ok(VERIFY_WRITE, buf, kNr * sizeof(struct prinfo)))
-		return -EFAULT;
-
-	p_kBuf = kmalloc_array(kNr, sizeof(struct prinfo), GFP_ATOMIC);
-	if (p_kBuf == NULL)
-		return -ENOMEM;
-
-	new_node = kmalloc(sizeof(struct pr_task_node), GFP_ATOMIC);
-	if (new_node == NULL) {
-		kfree(p_kBuf);
-		return -ENOMEM;
-	}
-
-	retval = 0;
-
-	/* lock the list access --> be sure to release */
-	/* After this section, should not directly return */
-	/* Need to unlock and free memory */
-	read_lock(&tasklist_lock);
-
-	/* step 1: find the root of the task tree */
-	p_cur = find_root_proc();
-
-	INIT_LIST_HEAD(&new_node->m_visited);
-	INIT_LIST_HEAD(&new_node->m_to_pop);
-
-	/* add init task to visited, to_pop list, and output list */
-	new_node->mp_task = p_cur;
-	list_add(p_to_pop, &new_node->m_to_pop);
-	list_add(p_visited, &new_node->m_visited);
-	fill_in_prinfo(&(p_kBuf[cnt++]), p_cur);
-
-	/* Don't need to continue if buffer is not enough */
-	if (cnt == kNr)
-		goto __algo_end;
-
-	while (!list_empty(p_to_pop)) {
-
-		/* a pointer to the child 'list_head' */
-		struct list_head *p_children = &(p_cur->children);
-
-		if (list_empty(p_children)) {
-
-			/* get the tail of the output to_pop queue */
-			struct pr_task_node *queue_tail =
-				list_entry(
-					p_to_pop->prev,
-					struct pr_task_node,
-					m_to_pop);
-
-			PRINTK("[TREE] output: case 1 - %d\n", p_cur->pid);
-			list_del(&(queue_tail->m_to_pop));
-
-			if (list_empty(p_to_pop)) {
-				PRINTK("[TREE] WTF !!!\n");
-				break;
-			}
-
-			/* next should be the top of to-pop stack */
-			p_cur = list_entry(
-					p_to_pop->prev,
-					struct pr_task_node,
-					m_to_pop)->mp_task;
-
-			continue;
-		}
-
-		p_unvisted_child = find_unvisited_child(p_children, p_visited);
-
-		/* if current process has unvisited child */
-		if (p_unvisted_child != NULL) {
-
-			new_node = kmalloc(sizeof(struct pr_task_node),
-					GFP_ATOMIC);
-
-			if (new_node == NULL) {
-				PRINTK("[TREE] memory allocation failure\n");
-				retval = -ENOMEM;
-				goto __algo_end;
-			}
-
-			p_cur = new_node->mp_task = p_unvisted_child;
-			INIT_LIST_HEAD(&new_node->m_visited);
-			INIT_LIST_HEAD(&new_node->m_to_pop);
-
-			/* added to the visited and pop list */
-			counter++;
-			list_add_tail(&new_node->m_visited, p_visited);
-			list_add_tail(&new_node->m_to_pop, p_to_pop);
-			fill_in_prinfo(&(p_kBuf[cnt++]), p_cur);
-
-			/* Don't need to continue if buffer is not enough */
-			if (cnt == kNr)
-				goto __algo_end;
-		}
-		/* No more children to work-on */
-		else {
-			/* get the tail of the output to_pop queue */
-			struct pr_task_node *stack_top =
-				list_entry(
-					p_to_pop->prev,
-					struct pr_task_node,
-					m_to_pop);
-
-			list_del(&(stack_top->m_to_pop));
-
-			/* traverse stack-top */
-			if (!list_empty(p_to_pop)) {
-				p_cur = list_entry(
-						p_to_pop->prev,
-						struct pr_task_node,
-						m_to_pop)->mp_task;
-			} else {
-				PRINTK("[TREE] Nothing left, terminated\n");
-				break;
-			}
-		}
-	}
-
-__algo_end:
-	read_unlock(&tasklist_lock);
-
-	/* clean up stage 1 - free visited list */
-	while (!list_empty(p_visited)) {
-		struct pr_task_node *pos = NULL;
-		struct list_head *p_list = NULL;
-
-		p_list = p_visited->next;
-		pos = list_entry(p_list, struct pr_task_node, m_visited);
-		list_del(p_list);
-		kfree(pos);
-	}
-
-	/* If come here for abortion, exit directly */
-	if (retval < 0)
-		goto __ptree_exit;
-
-	PRINTK("[TREE] Total tasks: %d, usr buffer size: %d\n", counter, kNr);
-
-	cnt = (cnt > kNr) ? kNr : cnt;
-	if (copy_to_user(buf, p_kBuf, cnt * sizeof(struct prinfo)) != 0) {
-		PRINTK("[TREE] copy to user failed - 1\n");
-		retval = -EFAULT;
-		goto __ptree_exit;
-	}
-
-	if (copy_to_user(nr, &counter, sizeof(int)) != 0) {
-		PRINTK("[TREE] copy_to_user failed - 2\n");
-		retval = -EFAULT;
-	}
-
-__ptree_exit:
-
-	/* clean up stage 2 */
-	kfree(p_kBuf);
-
-	return retval;
-}
-
 SYSCALL_DEFINE1(getsid, pid_t, pid)
 {
 	struct task_struct *p;
@@ -1654,7 +1373,7 @@ SYSCALL_DEFINE2(getrlimit, unsigned int, resource, struct rlimit __user *, rlim)
 /*
  *	Back compatibility for getrlimit. Needed for some apps.
  */
-
+ 
 SYSCALL_DEFINE2(old_getrlimit, unsigned int, resource,
 		struct rlimit __user *, rlim)
 {
