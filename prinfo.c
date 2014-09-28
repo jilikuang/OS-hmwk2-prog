@@ -99,11 +99,13 @@ int test_function(int n)
 	ret = syscall(__NR_ptree, inf, &nr);
 	/* fprintf(stderr, "nr = %d\n", nr); */
 
-	if (ret != 0) {
+	if (ret < 0) {
 		printf("System call error: %d\n", (int)ret);
 		free(inf);
 		return 0;
 	}
+
+	printf("Total task count: %ld\n", ret);
 
 	if (nr == n) {
 		free(inf);
@@ -154,11 +156,20 @@ void test_pthread(void *ptr)
 	int *param = (int *)ptr;
 	int ttt = *param;
 
-	printf("ttt %d %d %ld %d\n", getppid(), getpid(), syscall(__NR_gettid), getsid(getpid()));
+	printf("ttt %d %d %ld %d\n",
+		getppid(),
+		getpid(),
+		syscall(__NR_gettid),
+		getsid(getpid()));
 
 	pid = fork();
 	if (pid == 0) {
-		printf("fork: %d %d %ld %d\n", getppid(), getpid(), syscall(__NR_gettid), getsid(getpid()));
+		printf("fork: %d %d %ld %d\n",
+			getppid(),
+			getpid(),
+			syscall(__NR_gettid),
+			getsid(getpid()));
+
 		while (test_function(ttt) == -1)
 			ttt += 20;
 	} else if (pid > 0) {

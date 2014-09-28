@@ -1,5 +1,6 @@
 #!/bin/bash
 
+adb wait-for-device 
 adb remount
 adb push prinfo /sdcard/prinfo
 adb shell chmod 777 /sdcard/prinfo

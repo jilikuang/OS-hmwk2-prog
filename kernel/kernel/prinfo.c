@@ -103,6 +103,8 @@ SYSCALL_DEFINE2(ptree,
 	struct prinfo *p_kBuf = NULL;
 	int kNr = 0;
 	int cnt = 0;
+	int final_cnt = 0;
+	int is_mem_full = -1;
 
 	/* initialize 3 queues used in the DFS algo */
 	LIST_HEAD(to_pop_head);		/* a temp storage */
@@ -155,15 +157,17 @@ SYSCALL_DEFINE2(ptree,
 	new_node->mp_task = p_cur;
 	list_add(p_to_pop, &new_node->m_to_pop);
 	list_add(p_visited, &new_node->m_visited);
-	printk("pid %d:%d\n", p_cur->pid, (bool)thread_group_leader(p_cur));
-	if (thread_group_leader(p_cur))
+	PRINTK("pid %d:%d\n", p_cur->pid, (bool)thread_group_leader(p_cur));
+
+	if (thread_group_leader(p_cur)) {
 		fill_in_prinfo(&(p_kBuf[cnt++]), p_cur);
-	else
+		final_cnt++;
+	} else
 		PRINTK("[TREE] WTF !!!\n");
 
 	/* Don't need to continue if buffer is not enough */
 	if (cnt == kNr)
-		goto __algo_end;
+		is_mem_full = 1;
 
 	while (!list_empty(p_to_pop)) {
 
@@ -217,13 +221,19 @@ SYSCALL_DEFINE2(ptree,
 			/* added to the visited and pop list */
 			list_add_tail(&new_node->m_visited, p_visited);
 			list_add_tail(&new_node->m_to_pop, p_to_pop);
-			printk("pid %d:%d\n", p_cur->pid, (bool)thread_group_leader(p_cur));
-			if (thread_group_leader(p_cur))
-				fill_in_prinfo(&(p_kBuf[cnt++]), p_cur);
+			PRINTK("pid %d:%d\n", p_cur->pid, (
+					bool)thread_group_leader(p_cur));
+
+			if (thread_group_leader(p_cur)) {
+				final_cnt++;
+
+				if (is_mem_full == -1)
+					fill_in_prinfo(&(p_kBuf[cnt++]), p_cur);
+			}
 
 			/* Don't need to continue if buffer is not enough */
-			if (cnt == kNr)
-				goto __algo_end;
+			if (cnt >= kNr)
+				is_mem_full = 1;
 		}
 		/* No more children to work-on */
 		else {
@@ -286,6 +296,6 @@ __ptree_exit:
 	/* clean up stage 2 */
 	kfree(p_kBuf);
 
-	return retval;
+	return final_cnt;
 }
 
