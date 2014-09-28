@@ -293,6 +293,9 @@ __algo_end:
 
 __ptree_exit:
 
+	if (retVal < 0)
+		final_cnt = retVal;
+
 	/* clean up stage 2 */
 	kfree(p_kBuf);
 
