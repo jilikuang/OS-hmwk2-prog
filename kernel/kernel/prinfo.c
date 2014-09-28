@@ -155,6 +155,7 @@ SYSCALL_DEFINE2(ptree,
 	new_node->mp_task = p_cur;
 	list_add(p_to_pop, &new_node->m_to_pop);
 	list_add(p_visited, &new_node->m_visited);
+	printk("pid %d:%d\n", p_cur->pid, (bool)thread_group_leader(p_cur));
 	if (thread_group_leader(p_cur))
 		fill_in_prinfo(&(p_kBuf[cnt++]), p_cur);
 	else
@@ -216,6 +217,7 @@ SYSCALL_DEFINE2(ptree,
 			/* added to the visited and pop list */
 			list_add_tail(&new_node->m_visited, p_visited);
 			list_add_tail(&new_node->m_to_pop, p_to_pop);
+			printk("pid %d:%d\n", p_cur->pid, (bool)thread_group_leader(p_cur));
 			if (thread_group_leader(p_cur))
 				fill_in_prinfo(&(p_kBuf[cnt++]), p_cur);
 

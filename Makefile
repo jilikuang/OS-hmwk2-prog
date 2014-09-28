@@ -1,7 +1,7 @@
 CC := arm-none-linux-gnueabi-gcc
 LD := arm-none-linux-gnueabi-gcc
-CFLAGS := -g -Wall -Werror -static
-LDFLAGS := -static
+CFLAGS := -g -Wall -Werror -static -pthread
+LDFLAGS := -static -pthread
 
 OBJECTS := prinfo.o
 
