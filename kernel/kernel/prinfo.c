@@ -46,7 +46,7 @@ static int fill_in_prinfo(struct prinfo *info, struct task_struct *p)
 		info->uid = 0;
 
 	strncpy(info->comm, p->comm, 64);
-	info->comm[63] = 0;
+	info->comm[63] = '\0';
 
 	return retval;
 }
@@ -98,8 +98,6 @@ SYSCALL_DEFINE2(ptree,
 	struct task_struct *p_cur = NULL;
 	struct task_struct *p_unvisted_child = NULL;
 	struct pr_task_node *new_node;
-
-	int counter = 1;
 
 	/* kernel buffer */
 	struct prinfo *p_kBuf = NULL;
@@ -157,7 +155,10 @@ SYSCALL_DEFINE2(ptree,
 	new_node->mp_task = p_cur;
 	list_add(p_to_pop, &new_node->m_to_pop);
 	list_add(p_visited, &new_node->m_visited);
-	fill_in_prinfo(&(p_kBuf[cnt++]), p_cur);
+	if (thread_group_leader(p_cur))
+		fill_in_prinfo(&(p_kBuf[cnt++]), p_cur);
+	else
+		PRINTK("[TREE] WTF !!!\n");
 
 	/* Don't need to continue if buffer is not enough */
 	if (cnt == kNr)
@@ -213,10 +214,10 @@ SYSCALL_DEFINE2(ptree,
 			INIT_LIST_HEAD(&new_node->m_to_pop);
 
 			/* added to the visited and pop list */
-			counter++;
 			list_add_tail(&new_node->m_visited, p_visited);
 			list_add_tail(&new_node->m_to_pop, p_to_pop);
-			fill_in_prinfo(&(p_kBuf[cnt++]), p_cur);
+			if (thread_group_leader(p_cur))
+				fill_in_prinfo(&(p_kBuf[cnt++]), p_cur);
 
 			/* Don't need to continue if buffer is not enough */
 			if (cnt == kNr)
@@ -264,7 +265,7 @@ __algo_end:
 	if (retval < 0)
 		goto __ptree_exit;
 
-	PRINTK("[TREE] Total tasks: %d, usr buffer size: %d\n", counter, kNr);
+	PRINTK("[TREE] Total tasks: %d, usr buffer size: %d\n", cnt, kNr);
 
 	cnt = (cnt > kNr) ? kNr : cnt;
 	if (copy_to_user(buf, p_kBuf, cnt * sizeof(struct prinfo)) != 0) {
@@ -273,7 +274,7 @@ __algo_end:
 		goto __ptree_exit;
 	}
 
-	if (copy_to_user(nr, &counter, sizeof(int)) != 0) {
+	if (copy_to_user(nr, &cnt, sizeof(int)) != 0) {
 		PRINTK("[TREE] copy_to_user failed - 2\n");
 		retval = -EFAULT;
 	}
