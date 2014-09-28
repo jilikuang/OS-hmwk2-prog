@@ -34,15 +34,19 @@ void deinit_stack(void)
 
 void push(int x)
 {
+	int *tmp = gp_stack;
+
 	if (g_stack_idx == g_climit - 1) {
 		g_climit += 100;
-		gp_stack = realloc(gp_stack, g_climit);
+		tmp = (int *) realloc(gp_stack, sizeof(int) * g_climit);
 	}
 
-	if (gp_stack != NULL) {
+	if (tmp != NULL) {
+		gp_stack = tmp;
 		gp_stack[g_stack_idx++] = x;
 	} else {
 		printf("Insufficient memory.\n");
+		free(gp_stack);
 		exit(0);
 	}
 }
@@ -106,9 +110,9 @@ int test_function(int n)
 
 	for (i = 0; i < nr; ++i) {
 
-		p_info = &(inf[i]);
-
 		int cur_top = peep();
+
+		p_info = &(inf[i]);
 
 		if (cur_top == -1) {
 			push(p_info->pid);
