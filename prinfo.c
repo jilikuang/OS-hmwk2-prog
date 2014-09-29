@@ -3,10 +3,6 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
-#include <errno.h>
-#include <sys/wait.h>
-#include <string.h>
-#include <pthread.h>
 
 struct prinfo {
 	pid_t parent_pid;		/* process id of parent */
@@ -182,7 +178,7 @@ void test_pthread(void *ptr)
 
 	} else if (pid > 0) {
 		printf("===== %d\n", pid);
-		//wait(NULL);
+		/* wait(NULL); */
 		sleep (5);
 		return;
 	} else
@@ -192,7 +188,7 @@ void test_pthread(void *ptr)
 
 int main(void)
 {
-	#if 0
+#if 0
 	int j = 0;
 	int i = 0;
 
@@ -203,23 +199,10 @@ int main(void)
 		for (i = 0; i < 150; i++)
 			test_function(i);
 	}
-	#else
-#if 0
-	int param = 20;
-	int pid = 0;
-
-	pid = fork();
-	if (pid == 0)
-		while (test_function(param) == -1)
-			param += 20;
-	else if (pid > 0)
-		wait(NULL);
-	else
-		printf("error: %s", strerror(errno));
 #else
 	int param = 20;
-	pthread_t th;
 
+#if 1
 	printf("parent: %d %d %ld %d\n",
 		getppid(),
 		getpid(),
@@ -227,10 +210,11 @@ int main(void)
 		getsid(getpid()));
 	if (pthread_create(&th, NULL, (void *)test_pthread, (void *)&param) < 0)
 		printf("error: %s\n", strerror(errno));
+#else
+	while (test_function(param) == -1)
+		param += 20;
 
-	if (pthread_join(th, NULL) < 0)
-		printf("error: %s\n", strerror(errno));
 #endif
-	#endif
+#endif
 	return 0;
 }
