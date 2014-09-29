@@ -122,14 +122,13 @@ int test_function(int n)
 			print_tabs(num_of_stack());
 			push(p_info->pid);
 		} else {
-			while ((tmp = pop()) != -1) {
+			while ((tmp = pop()) != -1)
 				if (tmp == p_info->parent_pid) {
 					push(tmp);
 					print_tabs(num_of_stack());
 					push(p_info->pid);
 					break;
 				}
-			}
 		}
 
 		printf("%s,%d,%ld,%d,%d,%d,%ld\n",
@@ -145,6 +144,7 @@ int test_function(int n)
 	deinit_stack();
 	return ret;
 }
+
 #if 0
 void test_pthread(void *ptr)
 {
@@ -169,21 +169,20 @@ void test_pthread(void *ptr)
 		while (test_function(ttt) == -1)
 			ttt += 20;
 
-		sleep (10);
+		sleep(10);
 
 		while (test_function(ttt) == -1)
 			ttt += 20;
-		
-		sleep (10);
+
+		sleep(10);
 
 	} else if (pid > 0) {
 		printf("===== %d\n", pid);
 		/* wait(NULL); */
-		sleep (5);
-		return;
-	} else
+		sleep(5);
+	} else {
 		printf("error: %s\n", strerror(errno));
-
+	}
 }
 #endif
 
@@ -213,11 +212,12 @@ int main(void)
 #else
 	int param = 100;
 	int ret = 0;
+
 	ret = test_function(param);
 
 	if (ret > param)
 		test_function(ret);
-	
+
 #endif
 #endif
 	return 0;

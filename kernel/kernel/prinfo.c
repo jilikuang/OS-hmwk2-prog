@@ -34,14 +34,15 @@ static int fill_in_prinfo(struct prinfo *info, struct task_struct *p)
 			p->sibling.prev,
 			struct task_struct,
 			children) == p->parent)
-				info->next_sibling_pid = 0;
+			info->next_sibling_pid = 0;
 		else
 			info->next_sibling_pid = list_entry(
 				p->sibling.prev,
 				struct task_struct,
 				sibling)->pid;
-	} else
+	} else {
 		info->next_sibling_pid = 0;
+	}
 
 	info->state = p->state;
 
@@ -65,8 +66,8 @@ static struct task_struct *find_root_proc(void)
 static struct task_struct *find_unvisited_child(
 	struct task_struct *p_task,
 	struct list_head *p_children,
-	struct list_head *p_visited) {
-
+	struct list_head *p_visited)
+{
 	struct task_struct *child;
 	struct pr_task_node *vst;
 	struct task_struct *t = p_task;
@@ -92,7 +93,6 @@ static struct task_struct *find_unvisited_child(
 		}
 	}
 
-
 	if (thread_group_leader(p_task)) {
 		/* check each thread */
 		while_each_thread(p_task, t) {
@@ -101,30 +101,30 @@ static struct task_struct *find_unvisited_child(
 			list_for_each_entry(
 				child, &(t->children), sibling) {
 
-				in_the_visited_list = 0;			
-				
+				in_the_visited_list = 0;
+
 				list_for_each_entry_reverse(
 					vst, p_visited, m_visited) {
-                        		if (child == vst->mp_task) {
-                                		in_the_visited_list = 1;
-                                		break;
-                        		}
-                		}
+					if (child == vst->mp_task) {
+						in_the_visited_list = 1;
+						break;
+					}
+				}
 
-                		if (in_the_visited_list == 0) {
-                        		PRINTK("[TREE] Fnd unvsted chd: %d\n",
+				if (in_the_visited_list == 0) {
+					PRINTK("[TREE] Fnd unvsted chd: %d\n",
 						child->pid);
-                        		return child;
-                		}
-			} 
+					return child;
+				}
+			}
 		}
 	}
 
 	return NULL;
 }
 
-int has_any_child(struct task_struct *p_task) {
-	
+int has_any_child(struct task_struct *p_task)
+{
 	struct list_head *p_children = &(p_task->children);
 	struct task_struct *t = p_task;
 
@@ -132,13 +132,11 @@ int has_any_child(struct task_struct *p_task) {
 		return 1;
 
 	/* if p_task is group leader, check its all threads */
-	if (thread_group_leader(p_task)) {
-		while_each_thread(p_task, t) {
+	if (thread_group_leader(p_task))
+		while_each_thread(p_task, t)
 			if (!list_empty(&(t->children)))
 				return 1;
-		}
-	}
-	
+
 	return -1;
 }
 
@@ -253,7 +251,7 @@ SYSCALL_DEFINE2(ptree,
 			continue;
 		}
 
-		p_unvisted_child = 
+		p_unvisted_child =
 			find_unvisited_child(p_cur, p_children, p_visited);
 
 		/* if current process has unvisited child */
@@ -286,9 +284,8 @@ SYSCALL_DEFINE2(ptree,
 			/* Don't need to continue if buffer is not enough */
 			if (cnt >= kNr)
 				is_mem_full = 1;
-		}
-		/* No more children to work-on */
-		else {
+
+		} else {/* No more children to work-on */
 			/* get the tail of the output to_pop queue */
 			struct pr_task_node *stack_top =
 				list_entry(
