@@ -103,9 +103,9 @@ int test_function(int n)
 
 	printf("Total task count: %ld\n", ret);
 
-	if (nr == n) {
+	if (ret > n) {
 		free(inf);
-		return -1;
+		return ret;
 	}
 
 	init_stack();
@@ -143,9 +143,9 @@ int test_function(int n)
 	}
 
 	deinit_stack();
-	return nr;
+	return ret;
 }
-
+#if 0
 void test_pthread(void *ptr)
 {
 	int pid = 0;
@@ -185,6 +185,7 @@ void test_pthread(void *ptr)
 		printf("error: %s\n", strerror(errno));
 
 }
+#endif
 
 int main(void)
 {
@@ -200,9 +201,8 @@ int main(void)
 			test_function(i);
 	}
 #else
-	int param = 20;
 
-#if 1
+#if 0
 	printf("parent: %d %d %ld %d\n",
 		getppid(),
 		getpid(),
@@ -211,9 +211,13 @@ int main(void)
 	if (pthread_create(&th, NULL, (void *)test_pthread, (void *)&param) < 0)
 		printf("error: %s\n", strerror(errno));
 #else
-	while (test_function(param) == -1)
-		param += 20;
+	int param = 100;
+	int ret = 0;
+	ret = test_function(param);
 
+	if (ret > param)
+		test_function(ret);
+	
 #endif
 #endif
 	return 0;
