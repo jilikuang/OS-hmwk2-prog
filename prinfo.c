@@ -156,7 +156,7 @@ void test_pthread(void *ptr)
 	int *param = (int *)ptr;
 	int ttt = *param;
 
-	printf("ttt %d %d %ld %d\n",
+	printf("thread %d %d %ld %d\n",
 		getppid(),
 		getpid(),
 		syscall(__NR_gettid),
@@ -164,7 +164,7 @@ void test_pthread(void *ptr)
 
 	pid = fork();
 	if (pid == 0) {
-		printf("fork: %d %d %ld %d\n",
+		printf("thread fork: %d %d %ld %d\n",
 			getppid(),
 			getpid(),
 			syscall(__NR_gettid),
@@ -172,9 +172,19 @@ void test_pthread(void *ptr)
 
 		while (test_function(ttt) == -1)
 			ttt += 20;
+
+		sleep (10);
+
+		while (test_function(ttt) == -1)
+			ttt += 20;
+		
+		sleep (10);
+
 	} else if (pid > 0) {
 		printf("===== %d\n", pid);
-		wait(NULL);
+		//wait(NULL);
+		sleep (5);
+		return;
 	} else
 		printf("error: %s\n", strerror(errno));
 
@@ -210,6 +220,11 @@ int main(void)
 	int param = 20;
 	pthread_t th;
 
+	printf("parent: %d %d %ld %d\n",
+		getppid(),
+		getpid(),
+		syscall(__NR_gettid),
+		getsid(getpid()));
 	if (pthread_create(&th, NULL, (void *)test_pthread, (void *)&param) < 0)
 		printf("error: %s\n", strerror(errno));
 
