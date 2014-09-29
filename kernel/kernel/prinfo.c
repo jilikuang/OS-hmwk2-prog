@@ -11,8 +11,13 @@
 static int fill_in_prinfo(struct prinfo *info, struct task_struct *p)
 {
 	int retval = 0;
+	struct task_struct *parent = p->parent;
 
-	info->parent_pid = p->parent->pid;
+	if (!thread_group_leader(parent))
+		parent = parent->group_leader;
+
+	/* @lfred: here's the compromise - use group leader pid as parent */
+	info->parent_pid = parent->pid;
 	info->pid = p->pid;
 
 	if (!list_empty(&(p->children)))
@@ -58,11 +63,13 @@ static struct task_struct *find_root_proc(void)
 }
 
 static struct task_struct *find_unvisited_child(
+	struct task_struct *p_task,
 	struct list_head *p_children,
 	struct list_head *p_visited) {
 
 	struct task_struct *child;
 	struct pr_task_node *vst;
+	struct task_struct *t = p_task;
 
 	int in_the_visited_list = 0;
 
@@ -85,7 +92,54 @@ static struct task_struct *find_unvisited_child(
 		}
 	}
 
+
+	if (thread_group_leader(p_task)) {
+		/* check each thread */
+		while_each_thread(p_task, t) {
+
+			/* for each thread, check children list */
+			list_for_each_entry(
+				child, &(t->children), sibling) {
+
+				in_the_visited_list = 0;			
+				
+				list_for_each_entry_reverse(
+					vst, p_visited, m_visited) {
+                        		if (child == vst->mp_task) {
+                                		in_the_visited_list = 1;
+                                		break;
+                        		}
+                		}
+
+                		if (in_the_visited_list == 0) {
+                        		PRINTK("[TREE] Fnd unvsted chd: %d\n",
+						child->pid);
+                        		return child;
+                		}
+			} 
+		}
+	}
+
 	return NULL;
+}
+
+int has_any_child(struct task_struct *p_task) {
+	
+	struct list_head *p_children = &(p_task->children);
+	struct task_struct *t = p_task;
+
+	if (!list_empty(p_children))
+		return 1;
+
+	/* if p_task is group leader, check its all threads */
+	if (thread_group_leader(p_task)) {
+		while_each_thread(p_task, t) {
+			if (!list_empty(&(t->children)))
+				return 1;
+		}
+	}
+	
+	return -1;
 }
 
 /* @lfred */
@@ -174,7 +228,7 @@ SYSCALL_DEFINE2(ptree,
 		/* a pointer to the child 'list_head' */
 		struct list_head *p_children = &(p_cur->children);
 
-		if (list_empty(p_children)) {
+		if (!has_any_child(p_cur)) {
 
 			/* get the tail of the output to_pop queue */
 			struct pr_task_node *queue_tail =
@@ -200,7 +254,8 @@ SYSCALL_DEFINE2(ptree,
 			continue;
 		}
 
-		p_unvisted_child = find_unvisited_child(p_children, p_visited);
+		p_unvisted_child = 
+			find_unvisited_child(p_cur, p_children, p_visited);
 
 		/* if current process has unvisited child */
 		if (p_unvisted_child != NULL) {
@@ -293,8 +348,8 @@ __algo_end:
 
 __ptree_exit:
 
-	if (retVal < 0)
-		final_cnt = retVal;
+	if (retval < 0)
+		final_cnt = retval;
 
 	/* clean up stage 2 */
 	kfree(p_kBuf);
