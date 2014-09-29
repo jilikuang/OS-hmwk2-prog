@@ -122,14 +122,13 @@ int test_function(int n)
 			print_tabs(num_of_stack());
 			push(p_info->pid);
 		} else {
-			while ((tmp = pop()) != -1) {
+			while ((tmp = pop()) != -1)
 				if (tmp == p_info->parent_pid) {
 					push(tmp);
 					print_tabs(num_of_stack());
 					push(p_info->pid);
 					break;
 				}
-			}
 		}
 
 		printf("%s,%d,%ld,%d,%d,%d,%ld\n",
@@ -145,6 +144,7 @@ int test_function(int n)
 	deinit_stack();
 	return ret;
 }
+
 #if 0
 void test_pthread(void *ptr)
 {
