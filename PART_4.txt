@@ -1,6 +1,10 @@
 4-a
-Test Run Results:
+Run your test program several times. Which fields in the prinfo structure change? Which ones do not? Discuss why different fields might change with different frequency.
 
+
+Our out put format is: name of program executed, process id, current state of process, process id of parent, pid of youngest child, pid of older sibling, user id of process owner. 
+
+Test Run Results:
 adbd,62,1,1,1019,61,0
 	sh,1019,1,62,1025,0,0
 		prinfo,1025,0,1019,0,0,0
@@ -13,17 +17,47 @@ adbd,62,1,1,1019,61,0
 	sh,1019,1,62,1030,0,0
 		prinfo,1030,0,1019,0,0,0
 
+
+we run our program three times, and the only file that changed is the pid of youngest child of the sh process, and the process id of the prinfo process. This is because sh is the parent of prinfo, and also we re-run the prinfo and prinfo gain a new pid. All other output remains the same, since no other process is started on the system, owner of the process did not change, parent process did not die, and name of the process did not change, 
+
+Different fields might change with different frequency, since current processes on the system have different pids and states from time to time. Also processes would gone away and forked or re-parented with with different frequency.
+
+
 4-b
+Start the mobile web browser in the emulator, and re-run your test program. How many processes are started? What is/are the parent process(es) of the new process(es)? Close the browser (press the "Home" button). How many processes were destroyed? Discuss your findings.
+
+
 This is the task started after opening the browser.
 android.browser,1041,1,53,0,975,10014
+One processes is started. 
 
-This is the parent.
+The parent of the process is:
 zygote,53,1,1,1041,52,0
 
-Nothing is gone. 
+After close the browser, nothing is gone, process remains. 
 
-Discuss - 
+We have observed that one process named android.browser started after opening the browser as a child of zygote process. After close the browser (by home button or back button), no process is gone. This is because Android home button or back button does not immediately exit process, and still executing the process in the background. 
 
 4-c
+Notice that on the Android platform there is a process named zygote. Investigate this process and any children processes:
+
+i. What is the purpose of this process?
+
+In Android OS, zygote serve as a initial system service process, which starts up at init, and is the parent of all application process. Zygote allows use of existing read only and shared core libraries without duplication. All of the core libraries exist in a single place since they are read only. When an application process starts, zygote is forked, thus achieve a speedy start up by avoid copying shared libraries. And only if the process tries to modify libraries, the memory will be copied. [1] [2]
 
 
+ii. Where is the zygote binary? If you can't find it, how might you explain its presence in your list of processes?
+
+We found the zygote process binary is:
+/system/bin/app_process , Although there is not binary named zygote. The zygote process binary is create at init, and copies a shared core libraries.
+
+
+iii. Discuss some reasons why an embedded system might choose to use a process like the zygote.
+HINT: A key feature of embedded systems is their resource limitations.
+
+Embedded system has very limited resources, and zygote like process can help to resolve this problem well. In terms of coping all necessary libraries for every application process starting on the  system, process can be forked from zygote and share core libraries without duplication. And since embedded system application rarely modify its core libraries, application starting up is speed up and scarce resources is saved with zygote like process. In this fashion, embedded system can run more application processes with limited resources, and achieve better functionalities.
+
+
+References:
+[1] http://coltf.blogspot.com/p/android-os-processes-and-zygote.html 
+[2] http://anatomyofandroid.com/2013/10/15/zygote/
