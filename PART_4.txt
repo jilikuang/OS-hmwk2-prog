@@ -1,0 +1,29 @@
+4-a
+Test Run Results:
+
+adbd,62,1,1,1019,61,0
+	sh,1019,1,62,1025,0,0
+		prinfo,1025,0,1019,0,0,0
+                
+adbd,62,1,1,1019,61,0
+        sh,1019,1,62,1028,0,0
+                prinfo,1028,0,1019,0,0,0
+                
+adbd,62,1,1,1019,61,0
+	sh,1019,1,62,1030,0,0
+		prinfo,1030,0,1019,0,0,0
+
+4-b
+This is the task started after opening the browser.
+android.browser,1041,1,53,0,975,10014
+
+This is the parent.
+zygote,53,1,1,1041,52,0
+
+Nothing is gone. 
+
+Discuss - 
+
+4-c
+
+
