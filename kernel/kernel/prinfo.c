@@ -290,12 +290,11 @@ __algo_end:
 
 __ptree_exit:
 
-	if (retVal < 0)
-		final_cnt = retVal;
+	if (retval < 0)
+		final_cnt = retval;
 
 	/* clean up stage 2 */
 	kfree(p_kBuf);
 
 	return final_cnt;
 }
-
