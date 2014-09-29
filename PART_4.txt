@@ -30,7 +30,7 @@ Test Run Results:
 	sh,1019,1,62,1030,0,0
 		prinfo,1030,0,1019,0,0,0
 
-we run our program three times, and the only field changed is the pid of 
+we ran our program three times, and the only field changed is the pid of 
 youngest child of the sh process, and the process id of the prinfo process. 
 This is because sh is the parent of prinfo, and when we re-run the prinfo,  
 prinfo will gain a new pid. 
@@ -40,7 +40,7 @@ the system during the time of testing - owner of the process did not change,
 parent process did not die, and name of the process did not change, 
 
 Different fields might change with different frequency, since current processes 
-on the system have different pids and states from time to time. Also processes 
+on the system have different pids and states from time to time. Also, processes 
 would gone away and forked or re-parented with different frequency.
 
 ===============================================================================
@@ -61,7 +61,7 @@ The parent of the process is:
 	
 	zygote,53,1,1,1041,52,0
 
-After close the browser, nothing is gone, the browser process remains. 
+After closing the browser, nothing is gone, the browser process remains. 
 
 We have observed that one process named 'android.browser' started after opening 
 the browser, and it's a child process of the 'zygote' process. After close the 
@@ -76,7 +76,7 @@ Notice that on the Android platform there is a process named zygote.
 Investigate this process and any children processes:
 
 i. What is the purpose of this process?
-
+---
 [ANSWER]
 In Android OS, zygote serves as a initial system service process, which starts 
 up at init (specified in the init.rc file), and is the parent of all application 
@@ -86,29 +86,28 @@ they are read only. When an application process starts, a message is sent to
 the zygote process and a fork call is triggered. Thus, the application start-up
 is accelerated by reducing time copying the shared libs (read-only). [1] [2]
 
-
 ii. Where is the zygote binary? If you can't find it, how might you explain 
 its presence in your list of processes?
-
+---
 [ANSWER]
 There is no zygote binary. We found the zygote process binary is:
-/system/bin/app_process by investigatin the /proc structure. Although there is 
-no binary named zygote. The zygote process binary is create at init (specified
-in the init.rc), and copies a shared core libraries.
+/system/bin/app_process by investigating the /proc structure. Although there is 
+no binary named zygote. The zygote process binary is created at init (specified
+in the init.rc), and copies shared core libraries.
 
 iii. Discuss some reasons why an embedded system might choose to use a process 
 like the zygote.
 HINT: A key feature of embedded systems is their resource limitations.
-
+---
 [ANSWER]
-Embedded system has very limited resources, and such a mechanism can help to 
-resolve this problem well. In terms of coping all necessary libraries for 
-every application process starting on the system, process can be forked from 
-zygote and share core libraries without duplication. And since embedded system 
-application rarely modify its core libraries, application starting up is faster 
-and scarce resources is saved. In this fashion, embedded system can run more 
-application processes with limited resources, and achieve better functionalities.
-
+Embedded systems have only very limited resources, and such a mechanism can 
+help to resolve this problem well. In terms of coping all necessary libraries 
+for every application process starting on the system, processes can be forked 
+from zygote and share core libraries without duplication. And since an embedded 
+system application rarely modifies its core libraries, the application starting 
+up is faster and scarce resources are thus saved. In this fashion, embedded 
+systems can run more applications with only limited resources, and achieve 
+better functionalities.
 
 References:
 [1] http://coltf.blogspot.com/p/android-os-processes-and-zygote.html 
