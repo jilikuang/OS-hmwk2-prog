@@ -101,30 +101,29 @@ static struct task_struct *find_unvisited_child(
 			list_for_each_entry(
 				child, &(t->children), sibling) {
 
-				in_the_visited_list = 0;			
-				
+				in_the_visited_list = 0;
+
 				list_for_each_entry_reverse(
 					vst, p_visited, m_visited) {
-                        		if (child == vst->mp_task) {
-                                		in_the_visited_list = 1;
-                                		break;
-                        		}
-                		}
+					if (child == vst->mp_task) {
+						in_the_visited_list = 1;
+						break;
+					}
+				}
 
-                		if (in_the_visited_list == 0) {
-                        		PRINTK("[TREE] Fnd unvsted chd: %d\n",
+				if (in_the_visited_list == 0) {
+					PRINTK("[TREE] Fnd unvsted chd: %d\n",
 						child->pid);
-                        		return child;
-                		}
-			} 
+					return child;
+				}
+			}
 		}
 	}
 
-	return NULL;
-}
+	return NULL; }
 
-int has_any_child(struct task_struct *p_task) {
-	
+int has_any_child(struct task_struct *p_task)
+{
 	struct list_head *p_children = &(p_task->children);
 	struct task_struct *t = p_task;
 
@@ -138,7 +137,7 @@ int has_any_child(struct task_struct *p_task) {
 				return 1;
 		}
 	}
-	
+
 	return -1;
 }
 
@@ -253,7 +252,7 @@ SYSCALL_DEFINE2(ptree,
 			continue;
 		}
 
-		p_unvisted_child = 
+		p_unvisted_child =
 			find_unvisited_child(p_cur, p_children, p_visited);
 
 		/* if current process has unvisited child */

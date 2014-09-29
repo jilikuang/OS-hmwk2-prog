@@ -169,21 +169,20 @@ void test_pthread(void *ptr)
 		while (test_function(ttt) == -1)
 			ttt += 20;
 
-		sleep (10);
+		sleep(10);
 
 		while (test_function(ttt) == -1)
 			ttt += 20;
-		
-		sleep (10);
+
+		sleep(10);
 
 	} else if (pid > 0) {
 		printf("===== %d\n", pid);
 		/* wait(NULL); */
-		sleep (5);
-		return;
-	} else
+		sleep(5);
+	} else {
 		printf("error: %s\n", strerror(errno));
-
+	}
 }
 #endif
 
@@ -213,11 +212,12 @@ int main(void)
 #else
 	int param = 100;
 	int ret = 0;
+
 	ret = test_function(param);
 
 	if (ret > param)
 		test_function(ret);
-	
+
 #endif
 #endif
 	return 0;
